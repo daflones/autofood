@@ -20,7 +20,8 @@ export default function ForgotPassword() {
   } = useForm<FormData>({ resolver: zodResolver(schema) })
 
   const onSubmit = async ({ email }: FormData) => {
-    const redirectTo = `${window.location.origin}/reset-password`
+    const baseUrl = (import.meta.env.VITE_PUBLIC_SITE_URL as string) || 'https://www.autofood.com.br'
+    const redirectTo = `${baseUrl.replace(/\/$/, '')}/reset-password`
     const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo })
     if (error) {
       alert(error.message)
