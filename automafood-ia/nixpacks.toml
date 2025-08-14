@@ -1,0 +1,9 @@
+# Ensure devDependencies are installed so Vite is available during build
+[phases.install]
+cmds = [
+  "npm ci --include=dev"
+]
+
+[variables]
+# Prevent npm from pruning devDependencies in production builds
+NPM_CONFIG_PRODUCTION = "false"
