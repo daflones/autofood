@@ -14,7 +14,7 @@
     <rect x="0" y="0" width="140" height="140" rx="28" fill="url(#accent)"/>
     <text x="70" y="96" text-anchor="middle" font-family="Inter,Segoe UI,Arial" font-size="72" font-weight="900" fill="#ffffff">AF</text>
   </g>
-  <text x="100" y="330" font-family="Inter,Segoe UI,Arial" font-size="68" font-weight="800" fill="#ffffff">AutomaFood</text>
+  <text x="100" y="330" font-family="Inter,Segoe UI,Arial" font-size="68" font-weight="800" fill="#ffffff">AutoFood</text>
   <text x="100" y="392" font-family="Inter,Segoe UI,Arial" font-size="28" fill="#d1d5db">Automação de CRM e WhatsApp para Restaurantes</text>
   <text x="100" y="440" font-family="Inter,Segoe UI,Arial" font-size="22" fill="#9ca3af">Reservas · Clientes · Brindes · Painéis</text>
 </svg>

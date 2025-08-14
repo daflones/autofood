@@ -66,6 +66,8 @@ export default function Clientes() {
   const longPressTimerRef = useRef<number | null>(null)
   const isLongPressActiveRef = useRef(false)
   const kanbanRef = useRef<HTMLDivElement | null>(null)
+  const sourceColRef = useRef<HTMLElement | null>(null)
+  const sourceColScrollRef = useRef<HTMLElement | null>(null)
   // Visibilidade por coluna no Kanban (5 por visualização)
   const [visibleKanban, setVisibleKanban] = useState<Record<LeadStatus, number>>({
     novo_lead: 5,
@@ -139,6 +141,13 @@ export default function Clientes() {
       return matchesText && matchesStatus && matchesNums
     })
   }, [clientes, q, status, minReservas, minBrindes])
+
+  const shortName = (full: string | null | undefined) => {
+    const name = (full ?? '').toString().trim()
+    if (!name) return 'Sem nome'
+    const parts = name.split(/\s+/).filter(Boolean)
+    return parts.slice(0, 2).join(' ')
+  }
 
   const exportCSV = () => {
     const rows = filteredClientes
@@ -243,6 +252,21 @@ export default function Clientes() {
         kanbanRef.current.style.touchAction = 'none'
         kanbanRef.current.style.overflow = 'hidden'
       }
+      // Lock the scroll of the SOURCE column only
+      try {
+        const cardEl = document.querySelector(`[data-card-id="${id}"]`) as HTMLElement | null
+        const colEl = cardEl?.closest('[data-status-col]') as HTMLElement | null
+        sourceColRef.current = colEl
+        const innerScroll = colEl?.querySelector('.af-scroll-y') as HTMLElement | null
+        sourceColScrollRef.current = innerScroll
+        if (innerScroll) {
+          innerScroll.style.overflow = 'hidden'
+          innerScroll.style.touchAction = 'none'
+        } else if (colEl) {
+          colEl.style.overflow = 'hidden'
+          colEl.style.touchAction = 'none'
+        }
+      } catch {}
     }, 220) // ~220ms feels responsive without accidental drags
   }
 
@@ -315,6 +339,17 @@ export default function Clientes() {
       kanbanRef.current.style.touchAction = ''
       kanbanRef.current.style.overflow = ''
     }
+    // Restore source column scroll
+    if (sourceColScrollRef.current) {
+      sourceColScrollRef.current.style.overflow = ''
+      sourceColScrollRef.current.style.touchAction = ''
+    }
+    if (sourceColRef.current) {
+      sourceColRef.current.style.overflow = ''
+      sourceColRef.current.style.touchAction = ''
+    }
+    sourceColScrollRef.current = null
+    sourceColRef.current = null
   }
 
   const handleCardTouchCancel = () => {
@@ -325,6 +360,17 @@ export default function Clientes() {
     setTouchOverStatus(null)
     document.body.classList.remove('select-none')
     ;(document.body as any).style.touchAction = ''
+    // Restore source column scroll on cancel
+    if (sourceColScrollRef.current) {
+      sourceColScrollRef.current.style.overflow = ''
+      sourceColScrollRef.current.style.touchAction = ''
+    }
+    if (sourceColRef.current) {
+      sourceColRef.current.style.overflow = ''
+      sourceColRef.current.style.touchAction = ''
+    }
+    sourceColScrollRef.current = null
+    sourceColRef.current = null
   }
 
   return (
@@ -438,12 +484,12 @@ export default function Clientes() {
             {isLoading && <div className="af-text-dim">Carregando…</div>}
             {error && <div className="af-alert">Erro ao carregar clientes</div>}
             {!isLoading && !error ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4">
                 {filteredClientes.slice(0, visibleCount).map((c) => (
                   <div key={c.id} className="af-list-card">
-                    <div className="af-card-head flex items-start justify-between gap-4">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="h-12 w-12 rounded-full bg-[#0b1422] grid place-items-center text-white text-sm font-semibold shrink-0">
+                    <div className="af-card-head flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="h-10 w-10 rounded-full bg-[#0b1422] grid place-items-center text-white text-[12px] font-semibold shrink-0">
                           {(() => {
                             const name = (c.nome ?? 'Cliente').toString().trim()
                             const ini = name.split(/\s+/).map((p: string) => p[0]).slice(0,2).join('').toUpperCase()
@@ -451,18 +497,18 @@ export default function Clientes() {
                           })()}
                         </div>
                         <div className="min-w-0">
-                          <div className="truncate title">{c.nome ?? 'Sem nome'}</div>
-                          <div className="truncate subtle" style={{ marginTop: '0.6rem' }}>
-                            <span className="inline-flex items-center gap-2">
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="opacity-80">
+                          <div className="truncate title text-[15px] leading-5">{shortName(c.nome)}</div>
+                          <div className="subtle text-xs text-white/80 break-words" style={{ marginTop: '0.4rem' }}>
+                            <span className="inline-flex items-center gap-1.5 align-top">
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="opacity-80">
                                 <path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2a1 1 0 011.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 011 1V21a1 1 0 01-1 1C10.85 22 2 13.15 2 2a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.46.57 3.58a1 1 0 01-.24 1.01l-2.2 2.2z" fill="currentColor"/>
                               </svg>
-                              {c.telefone ?? '—'}
+                              <span className="break-words">{c.telefone ?? '—'}</span>
                             </span>
                           </div>
                         </div>
                       </div>
-                      <span className="af-badge text-[12px] shrink-0">
+                      <span className="af-badge text-[11px] shrink-0">
                         <span className="af-badge-dot" />
                         {(() => {
                           const s = (c as any).lead_status
@@ -481,19 +527,19 @@ export default function Clientes() {
                       </span>
                     </div>
                     <div className="af-list-sep" />
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-2.5">
                       <div className="af-metric-soft">
                         <div className="label">Brindes</div>
-                        <div className="value">{c.total_brindes ?? 0}</div>
+                        <div className="value text-[15px]">{c.total_brindes ?? 0}</div>
                       </div>
                       <div className="af-metric-soft">
                         <div className="label">Reservas</div>
-                        <div className="value">{c.total_reservas ?? 0}</div>
+                        <div className="value text-[15px]">{c.total_reservas ?? 0}</div>
                       </div>
                     </div>
-                    <div className="mt-5 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2">
-                      <button onClick={() => openEdit(c)} className="w-full sm:w-auto af-btn-ghost px-4 py-2 text-sm">Editar</button>
-                      <button onClick={() => { if (confirm('Excluir este cliente?')) deleteCliente.mutate(c.id) }} className="w-full sm:w-auto af-btn-ghost px-4 py-2 text-sm">Excluir</button>
+                    <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2">
+                      <button onClick={() => openEdit(c)} className="w-full sm:w-auto af-btn-ghost px-3 py-1.5 text-xs">Editar</button>
+                      <button onClick={() => { if (confirm('Excluir este cliente?')) deleteCliente.mutate(c.id) }} className="w-full sm:w-auto af-btn-ghost px-3 py-1.5 text-xs">Excluir</button>
                     </div>
                   </div>
                 ))}
@@ -543,6 +589,7 @@ export default function Clientes() {
                   {grouped[statusCol].slice(0, visibleKanban[statusCol]).map((c: any) => (
                     <div
                       key={c.id}
+                      data-card-id={c.id}
                       draggable
                       onDragStart={(e) => onDragStart(e, c.id)}
                       onTouchStart={handleCardTouchStart(c.id)}
@@ -553,8 +600,8 @@ export default function Clientes() {
                     >
                       <div className="af-card-head flex items-center justify-between gap-3">
                         <div className="min-w-0">
-                          <div className="truncate title">{c.nome ?? '—'}</div>
-                          <div className="truncate subtle" style={{ marginTop: '0.6rem' }}>{c.telefone || '—'}</div>
+                          <div className="truncate title text-[15px] leading-5">{shortName(c.nome)}</div>
+                          <div className="subtle text-xs text-white/80 break-words" style={{ marginTop: '0.4rem' }}>{c.telefone || '—'}</div>
                         </div>
                         <button onClick={() => openEdit(c)} className="shrink-0 af-btn-ghost px-2 py-1 lg:px-3 lg:py-1.5 text-[11px] lg:text-[12px]">Editar</button>
                       </div>
