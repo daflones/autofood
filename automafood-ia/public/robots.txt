@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# Update to your final domain
+Sitemap: https://SEU-DOMINIO/sitemap.xml
