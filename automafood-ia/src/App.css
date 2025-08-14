@@ -1,0 +1,193 @@
+#root {
+  max-width: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: initial;
+}
+
+/* AutomaFood Palette: Dark Blue / Black / White */
+:root {
+  --af-bg: #0b1220;           /* deep navy */
+  --af-surface: #0e1a2b;      /* slightly lighter navy */
+  --af-elev: #14243a;         /* elevated surface */
+  --af-border: rgba(255,255,255,0.12);
+  --af-border-strong: rgba(255,255,255,0.2);
+  --af-text: #ffffff;         /* white text on dark */
+  --af-text-inverse: #0b1220; /* dark text on white */
+  --af-white: #ffffff;
+  --af-black: #111111;
+}
+
+body { background: var(--af-bg); color: var(--af-text); }
+
+/* Helper utility classes to avoid changing Tailwind config */
+.af-card { background: color-mix(in oklab, var(--af-surface) 92%, black 0%); border: 1px solid var(--af-border); }
+.af-card-elev { background: color-mix(in oklab, var(--af-elev) 92%, black 0%); border: 1px solid var(--af-border); }
+.af-border { border-color: var(--af-border) !important; }
+.af-border-strong { border-color: var(--af-border-strong) !important; }
+.af-chip { background: color-mix(in oklab, var(--af-elev) 88%, black 0%); border: 1px solid var(--af-border); color: var(--af-white); }
+.af-chip-red { background: #3a0f12; border: 1px solid #7f1d1d; color: #fecaca; }
+.af-text { color: var(--af-white) !important; }
+.af-muted { color: rgba(255,255,255,0.7) !important; }
+.af-inverse { color: var(--af-text-inverse) !important; }
+
+/* Remove demo logo styles */
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+/* Remove demo card/docs styles */
+
+/* React Big Calendar - Dark Theme Overrides */
+.rbc-calendar {
+  background-color: transparent;
+  color: #fff;
+}
+.rbc-toolbar {
+  color: #fff;
+}
+.rbc-toolbar button {
+  background: linear-gradient(to right, #b91c1c, #7c2d12);
+  color: #fff;
+  border: 1px solid rgba(185, 28, 28, 0.6);
+}
+.rbc-toolbar button:active,
+.rbc-toolbar button.rbc-active,
+.rbc-toolbar button:hover {
+  background: linear-gradient(to right, #991b1b, #7c2d12);
+}
+.rbc-month-view, .rbc-time-view, .rbc-agenda-view {
+  background-color: rgba(0,0,0,0.6);
+  border: 1px solid rgba(127, 29, 29, 0.5);
+}
+.rbc-off-range-bg { background: rgba(127, 29, 29, 0.15); }
+.rbc-today { background-color: rgba(220, 38, 38, 0.15); }
+.rbc-header { background-color: rgba(0,0,0,0.4); color: #fff; border-color: rgba(127, 29, 29, 0.5); }
+.rbc-time-header, .rbc-time-content, .rbc-time-gutter { border-color: rgba(127, 29, 29, 0.5); }
+.rbc-day-bg + .rbc-day-bg { border-color: rgba(127, 29, 29, 0.4); }
+.rbc-timeslot-group { border-color: rgba(127, 29, 29, 0.25); }
+
+.rbc-event, .rbc-day-slot .rbc-background-event {
+  background-color: rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(5, 150, 105, 0.5);
+  color: #d1fae5;
+}
+.rbc-event.rbc-selected { background-color: rgba(16, 185, 129, 0.35); }
+.rbc-slot-selection { background-color: rgba(239, 68, 68, 0.2); color: #fff; }
+
+.rbc-agenda-table { border-color: rgba(127, 29, 29, 0.5); }
+.rbc-agenda-table thead > tr > th { border-color: rgba(127, 29, 29, 0.5); color: #fff; }
+.rbc-agenda-date-cell, .rbc-agenda-time-cell, .rbc-agenda-event-cell { border-color: rgba(127, 29, 29, 0.3); }
+
+/* FullCalendar - Black/White Scheme */
+.fc {
+  --fc-small-font-size: 0.82rem;
+  --fc-button-text-color: #ffffff;
+  --fc-button-bg-color: #111111;
+  --fc-button-border-color: #e5e7eb;
+  --fc-button-hover-bg-color: #1f2937;
+  --fc-button-hover-border-color: #d1d5db;
+  --fc-button-active-bg-color: #000000;
+  --fc-button-active-border-color: #9ca3af;
+  --fc-event-bg-color: #111111;
+  --fc-event-border-color: #e5e7eb;
+  --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: #ffffff;
+  --fc-highlight-color: #f3f4f6;
+  --fc-border-color: #e5e7eb;
+  --fc-today-bg-color: #f5f5f5;
+  color: var(--af-white);
+}
+.fc .fc-toolbar-title { color: var(--af-white); }
+.fc .fc-scrollgrid, .fc .fc-scrollgrid-section > td, .fc .fc-scrollgrid-section > th { border-color: var(--fc-border-color); }
+.fc-theme-standard .fc-list { border-color: var(--fc-border-color); }
+.fc .fc-timegrid-slot, .fc .fc-timegrid-axis, .fc .fc-daygrid-day, .fc .fc-daygrid-day-frame { border-color: var(--fc-border-color); }
+.fc .fc-daygrid-day.fc-day-today, .fc .fc-timegrid-col.fc-day-today { background-color: var(--fc-today-bg-color); }
+.fc .fc-list-heading, .fc .fc-list-table td, .fc .fc-list-table th { border-color: var(--fc-border-color); color: var(--af-white); }
+.fc .fc-list-day-cushion { background: #0f172a; }
+.fc .fc-timegrid-axis-cushion, .fc .fc-timegrid-slot-label-cushion, .fc .fc-daygrid-day-number { color: #f3f4f6; font-weight: 600; }
+.fc .fc-col-header-cell-cushion { color: #fff; }
+.fc .fc-popover { background: rgba(0,0,0,0.9); border: 1px solid var(--fc-border-color); color: #fff; }
+/* Slot lane zebra for visibility */
+.fc .fc-timegrid-slot-lane:nth-child(2n) { background: rgba(12,12,12,0.45); }
+.fc .fc-timegrid-slot-lane:nth-child(2n+1) { background: rgba(0,0,0,0.35); }
+/* Axis stronger */
+.fc .fc-timegrid-axis-frame { background: rgba(0,0,0,0.55); }
+.fc .fc-timegrid-axis-cushion { color: #e5e7eb; font-weight: 700; }
+/* Events readability */
+.fc .fc-event { border-radius: 10px; box-shadow: 0 6px 16px rgba(0,0,0,0.35); backdrop-filter: saturate(145%); font-weight: 600; }
+.fc .fc-timegrid-event .fc-event-time { font-weight: 700; }
+.fc .fc-timegrid-event .fc-event-title { white-space: normal; }
+
+/* Event classes by status */
+.afc-event { backdrop-filter: saturate(140%); }
+/* Confirmed = neutral gray */
+/* Event colors within B/W scheme (chips still colored subtly) */
+.afc-event-confirmada { background: #0f172a !important; border-color: #334155 !important; color: #ffffff !important; }
+.afc-event-pendente { background: #111111 !important; border-color: #e5e7eb !important; color: #ffffff !important; }
+.afc-event-cancelada { background: #3a0f12 !important; border-color: #7f1d1d !important; color: #fecaca !important; }
+
+/* Drag mirror feedback: keep above and aligned */
+#reservas-calendar-wrapper { position: relative; }
+.fc .fc-event-mirror,
+.fc .fc-event-dragging {
+  z-index: 40 !important; /* below Tailwind z-50 modal */
+  opacity: 0.95;
+  pointer-events: none;
+}
+.fc .fc-highlight { opacity: 0.25; }
+
+/* During dragging, neutralize transforms that can offset the mirror */
+/* Broaden neutralization to eliminate any offset from transforms/filters during drag */
+body.afc-dragging * {
+  transform: none !important;
+  perspective: none !important;
+  filter: none !important;
+}
+
+/* Light theme for calendar: white background, dark text */
+.fc, .fc-theme-standard .fc-scrollgrid, .fc .fc-daygrid, .fc .fc-timegrid, .fc .fc-list {
+  background: var(--af-surface) !important;
+  color: var(--af-white) !important;
+}
+.fc .fc-col-header-cell, .fc .fc-timegrid-axis, .fc-theme-standard td, .fc-theme-standard th {
+  border-color: var(--fc-border-color) !important;
+}
+.fc .fc-toolbar-title, .fc .fc-button { color: var(--af-white) !important; }
+.fc .fc-button-primary { background: var(--af-black) !important; border-color: #e5e7eb !important; color: #ffffff !important; }
+.fc .fc-button-primary:not(:disabled):hover { background: #1f2937 !important; }
+.fc .fc-daygrid-day-number, .fc .fc-timegrid-slot-label, .fc .fc-col-header-cell-cushion { color: #ffffff !important; }
+.fc .fc-timegrid-slot { background: var(--af-surface) !important; }
+
+/* Selected day highlight (from Reservas.tsx dayCellClassNames) */
+.fc .afc-day-selected {
+  outline: 2px solid #ef4444; /* red-500 */
+  outline-offset: -2px;
+  background-color: #fee2e2 !important; /* red-100 */
+}
+
+/* Ensure calendar base sits below modal */
+.fc { position: relative; z-index: 0; }
+.fc .fc-popover { z-index: 45; }
+
+/* Mobile tweaks: more compact calendar */
+@media (max-width: 768px) {
+  .fc { font-size: 0.86rem; }
+  .fc .fc-toolbar { gap: 6px; }
+  .fc .fc-toolbar-title { font-size: 1rem; }
+  .fc .fc-daygrid-day-number { font-size: 0.75rem; }
+  .fc .fc-timegrid-slot-label { font-size: 0.72rem; }
+}
