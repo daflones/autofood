@@ -1,28 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <!-- Update <loc> to your production domain -->
   <url>
-    <loc>https://SEU-DOMINIO/</loc>
+    <loc>https://www.autofood.com.br/</loc>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://SEU-DOMINIO/reservas</loc>
+    <loc>https://www.autofood.com.br/reservas</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://SEU-DOMINIO/clientes</loc>
+    <loc>https://www.autofood.com.br/clientes</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://SEU-DOMINIO/brindes</loc>
+    <loc>https://www.autofood.com.br/brindes</loc>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://SEU-DOMINIO/configuracoes</loc>
+    <loc>https://www.autofood.com.br/configuracoes</loc>
     <changefreq>weekly</changefreq>
     <priority>0.4</priority>
   </url>

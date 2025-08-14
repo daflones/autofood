@@ -1,5 +1,4 @@
 User-agent: *
 Allow: /
 
-# Update to your final domain
-Sitemap: https://SEU-DOMINIO/sitemap.xml
+Sitemap: https://www.autofood.com.br/sitemap.xml
