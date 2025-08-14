@@ -1,7 +1,12 @@
 # Ensure devDependencies are installed so Vite is available during build
 [phases.install]
-cmds = [
+commands = [
   "npm ci --include=dev"
+]
+
+[phases.build]
+commands = [
+  "npm run build"
 ]
 
 [variables]
