@@ -166,7 +166,15 @@ html, body, #root {
 @layer utilities {
   .af-shadow-soft { box-shadow: 0 12px 40px rgba(0,0,0,0.45); }
   .af-glow {
-    box-shadow: 0 0 0 1px rgba(27,37,53,0.65), 0 8px 24px rgba(59,130,246,0.16), 0 0 22px rgba(59,130,246,0.22);
+    /* Important to override component-level shadows (e.g., .af-list-card) */
+    box-shadow: 0 0 0 2px rgba(59,130,246,0.45), 0 10px 28px rgba(59,130,246,0.28), 0 0 26px rgba(59,130,246,0.32) !important;
+  }
+  /* Unified selected state helper for all list cards */
+  .af-selected {
+    position: relative;
+    z-index: 1;
+    transform: translateY(-1px);
+    border-color: rgba(59,130,246,0.35) !important;
   }
   .af-divider { border-color: var(--af-border); }
 
@@ -189,7 +197,9 @@ html, body, #root {
   }
 
   /* Blue-only helper text for inline validation/messages */
-  .af-help { color: #93c5fd; /* blue-300 */ font-size: 0.75rem; line-height: 1rem; }
+  .af-section-title { @apply text-white font-semibold; font-size: clamp(1.35rem, 1.4vw + 1rem, 1.8rem); line-height: 1.9rem; }
+  /* Subtitle for inner blocks like list headers (e.g., Reservas do dia) */
+  .af-subtitle { @apply text-white font-semibold; font-size: clamp(1.1rem, 0.9vw + 0.95rem, 1.4rem); line-height: 1.7rem; }
   .af-help-sm { color: #bfdbfe; /* blue-200 */ font-size: 0.7rem; line-height: 0.95rem; }
 
   /* Kanban utilities */
@@ -236,16 +246,35 @@ html, body, #root {
   .af-snap-start { scroll-snap-align: start; }
   /* List cards (Clientes - Lista) */
   .af-list-card {
-    background: linear-gradient(180deg, rgba(17,28,48,0.58), rgba(13,22,38,0.52));
-    border: 1px solid rgba(59,130,246,0.12);
+    position: relative;
+    background: linear-gradient(180deg, rgba(23,37,84,0.32), rgba(13,22,38,0.24)); /* deeper blue tint for stronger separation */
+    border: 1px solid rgba(59,130,246,0.22); /* higher contrast border */
     border-radius: 18px;
     padding: 1rem 1.1rem;
-    box-shadow: 0 8px 24px rgba(2,6,23,0.35), inset 0 1px 0 rgba(255,255,255,0.03);
-    transition: transform 120ms ease, box-shadow 140ms ease, border-color 140ms ease, background 140ms ease;
+    box-shadow: 0 10px 30px rgba(2,6,23,0.48), inset 0 1px 0 rgba(255,255,255,0.06);
+    transition: transform 120ms ease, box-shadow 160ms ease, border-color 160ms ease, background 160ms ease;
     backdrop-filter: blur(2px);
   }
-  .af-list-card:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(2,6,23,0.40); border-color: rgba(59,130,246,0.18); }
-  .af-list-card .title { font-weight: 600; color: rgba(255,255,255,0.96); font-size: 1rem; line-height: 1.25rem; }
+  .af-list-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(900px 360px at 10% -20%, rgba(59,130,246,0.12), transparent 60%),
+                radial-gradient(700px 320px at 110% 120%, rgba(96,165,250,0.10), transparent 60%);
+    opacity: .9;
+  }
+  .af-list-card:hover { transform: translateY(-1.5px); box-shadow: 0 14px 36px rgba(2,6,23,0.52); border-color: rgba(59,130,246,0.30); }
+  /* Lighter variant specifically for info rows (Brindes/Reservas items) */
+  .af-list-card-info {
+    background: linear-gradient(180deg, rgba(37,58,170,0.28), rgba(19,32,56,0.22));
+    border-color: rgba(96,165,250,0.34) !important;
+  }
+  .af-list-card-info::before {
+    background: radial-gradient(900px 360px at 8% -18%, rgba(147,197,253,0.14), transparent 60%),
+                radial-gradient(700px 320px at 108% 118%, rgba(59,130,246,0.12), transparent 60%);
+  }
+  .af-list-card .title { font-weight: 600; color: rgba(255,255,255,0.96); font-size: 1.12rem; line-height: 1.35rem; }
   .af-list-card .subtle { color: rgba(255,255,255,0.72); font-size: 0.86rem; }
   .af-list-sep { height: 1px; background: linear-gradient(90deg, transparent, rgba(59,130,246,0.12), transparent); margin: 0.75rem 0; }
   @media (max-width: 768px) { .af-list-card { background: linear-gradient(180deg, rgba(17,28,48,0.04), rgba(13,22,38,0.04)); } }

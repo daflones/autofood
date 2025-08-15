@@ -172,16 +172,27 @@ export default function Dashboard() {
           <div className="mb-2 text-sm lg:text-[15px] font-medium text-white">Brindes</div>
           <div className="text-sm text-neutral-300">Resgatados: {brindesResgatados} • Pendentes: {brindesPendentes} • Vencidos: {brindesVencidos}</div>
           <ul className="mt-2 space-y-2 text-sm">
-            {qrcodesSafe.slice(0, 6).map((q: any) => (
-              <li key={q.id} className="flex items-center justify-between gap-3 rounded-md af-border af-card px-3 py-2">
-                <div className="min-w-0 flex-1 truncate text-white">{q.codigo}</div>
-                {(() => {
-                  const s = (q.status as 'Resgatado' | 'Pendente' | 'Vencido') || 'Pendente'
-                  const cls = 'af-chip rounded-full'
-                  return <span className={`${cls} px-2 py-0.5 text-[11px]`}>{s}</span>
-                })()}
-              </li>
-            ))}
+            {qrcodesSafe.slice(0, 6).map((q: any) => {
+              const owner = clientesById[q.cliente_id as string] ?? 'Cliente'
+              const title = q.tipo_brinde?.trim?.() ? q.tipo_brinde : (q.descricao?.trim?.() ? q.descricao : 'Brinde')
+              const subtitleParts = [owner]
+              if (q.codigo) subtitleParts.push(`#${q.codigo}`)
+              if (q.expires_at) subtitleParts.push(`vence ${new Date(q.expires_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`)
+              const subtitle = subtitleParts.join(' • ')
+              return (
+                <li key={q.id} className="flex items-center justify-between gap-3 rounded-md af-border af-card px-3 py-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-medium text-white">{title}</div>
+                    <div className="truncate text-xs text-neutral-300">{subtitle}</div>
+                  </div>
+                  {(() => {
+                    const s = (q.status as 'Resgatado' | 'Pendente' | 'Vencido') || 'Pendente'
+                    const cls = 'af-chip rounded-full'
+                    return <span className={`${cls} px-2 py-0.5 text-[11px]`}>{s}</span>
+                  })()}
+                </li>
+              )
+            })}
             {qrcodesSafe.length === 0 && <li className="text-neutral-300">Nenhum brinde cadastrado.</li>}
           </ul>
         </div>

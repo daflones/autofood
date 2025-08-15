@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState, useEffect } from 'react'
 import { startOfWeek, addDays, addWeeks, format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useReservas, useClientes, useDeleteReserva, useCreateReserva, useUpdateReserva } from '../hooks/useRestaurantData'
@@ -14,6 +14,19 @@ export default function Reservas() {
     const c = (clientes ?? []).find((x) => x.id === clienteId)
     return c?.nome ?? '—'
   }
+
+  // Fecha o menu de status ao clicar fora
+  useEffect(() => {
+    const onDocClick = (e: MouseEvent) => {
+      const t = e.target as HTMLElement | null
+      if (!t) return
+      if (!t.closest('[data-status-menu]')) setExpandedId(null)
+    }
+    document.addEventListener('mousedown', onDocClick)
+    return () => document.removeEventListener('mousedown', onDocClick)
+  }, [])
+
+  // Removido: auto-sync em massa para evitar alterar todas as reservas ao carregar
 
   // (grade de horários removida na visão simplificada)
 
@@ -45,15 +58,70 @@ export default function Reservas() {
   const [selectedDay, setSelectedDay] = useState<string>(todayStr)
   // List filters
   const [q, setQ] = useState('')
-  const [statusSel, setStatusSel] = useState<'todos' | 'pendente' | 'confirmada' | 'cancelada'>('todos')
+  const [statusSel, setStatusSel] = useState<'todos' | 'pendente' | 'confirmada' | 'cancelada' | 'finalizada' | 'expirada'>('todos')
   const [pagamentoSel, setPagamentoSel] = useState<'todos' | 'pago' | 'pendente'>('todos')
+  // Bulk selection state (lista)
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const longPressTimerRef = useRef<number | null>(null)
+  const suppressNextTapIdRef = useRef<string | null>(null)
+  const enableSelection = () => setSelectionMode(true)
+  const disableSelection = () => { setSelectionMode(false); setSelectedIds(new Set()) }
+  const toggleSelectId = (id: string | number, checked: boolean) => {
+    const key = String(id)
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (checked) next.add(key)
+      else next.delete(key)
+      return next
+    })
+  }
+  const bulkDeleteSelected = async () => {
+    if (selectedIds.size === 0) return
+    if (!confirm(`Excluir ${selectedIds.size} reserva(s)?`)) return
+    const ids = Array.from(selectedIds)
+    await Promise.all(ids.map((id) => deleteReserva.mutateAsync(id)))
+    disableSelection()
+  }
+  const onCardTouchStart = (id: string | number) => {
+    if (longPressTimerRef.current) window.clearTimeout(longPressTimerRef.current)
+    longPressTimerRef.current = window.setTimeout(() => {
+      setSelectionMode(true)
+      toggleSelectId(id, true)
+      // Prevent the synthetic click after long-press from toggling back (only for this card)
+      suppressNextTapIdRef.current = String(id)
+    }, 2000)
+  }
+  const onCardTouchEnd = () => {
+    if (longPressTimerRef.current) {
+      window.clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+  }
+  // Status derivado conforme regras novas
+  const now = new Date()
+  const effectiveStatus = (r: any) => {
+    const dateStr = r.data_reserva as string | undefined
+    const timeStr = (r.hora_reserva as string | undefined)?.slice(0,5) || '00:00'
+    const base = dateStr ? new Date(`${dateStr}T${timeStr}:00`) : null
+    const afterDate = !!(base && now > base)
+    const status = (r.status ?? 'pendente') as string
+    const pago = !!r.status_pagamento
+    // Regras (ajustadas):
+    // - NÃO auto-finaliza quando pagar; finalização é uma ação explícita do usuário
+    // - Auto-expira se passou da data e (pendente ou confirmada não paga)
+    if (afterDate && (status === 'pendente' || (status === 'confirmada' && !pago))) return 'expirada'
+    return status
+  }
+
   const filtered = useMemo(() => {
     return sorted.filter((r: any) => {
       if (r.data_reserva !== selectedDay) return false
       const nome = clienteNome(r.cliente_id).toLowerCase()
       const txt = q.toLowerCase().trim()
       const matchesText = txt.length === 0 || nome.includes(txt)
-      const matchesStatus = statusSel === 'todos' || (r.status ?? 'pendente') === statusSel
+      const effStatus = effectiveStatus(r)
+      const matchesStatus = statusSel === 'todos' || effStatus === statusSel
       const matchesPagamento = pagamentoSel === 'todos' || (pagamentoSel === 'pago' ? !!r.status_pagamento : !r.status_pagamento)
       return matchesText && matchesStatus && matchesPagamento
     })
@@ -110,10 +178,7 @@ export default function Reservas() {
     await updateReserva.mutateAsync({ id, payload: { status } as any })
     refetch?.()
   }
-  const togglePago = async (id: string, current: boolean) => {
-    await updateReserva.mutateAsync({ id, payload: { status_pagamento: !current } as any })
-    refetch?.()
-  }
+  // removed: togglePago (pedido do usuário para não alterar no card)
 
   // Removido: manipuladores de arrastar/redimensionar do calendário anterior
 
@@ -155,7 +220,6 @@ export default function Reservas() {
 
   // Expand on card click to reveal actions
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const toggleExpand = (id: string) => setExpandedId((cur) => (cur === id ? null : id))
 
   // Datas utilitárias
   const parseYYYYMMDD = (s: string) => {
@@ -206,9 +270,32 @@ export default function Reservas() {
     <div className="space-y-8 lg:space-y-10">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl md:text-3xl xl:text-4xl font-semibold bg-clip-text text-transparent af-grad">Reservas</h1>
-        <button onClick={openCreate} className="af-btn-primary">
-          Nova Reserva
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Desktop: toggle selection */}
+          <button
+            onClick={() => (selectionMode ? disableSelection() : enableSelection())}
+            className="hidden sm:inline-flex af-btn-ghost px-3 py-2 text-sm"
+            title="Mais opções"
+          >
+            ⋯
+          </button>
+          {selectionMode && (
+            <button
+              onClick={bulkDeleteSelected}
+              disabled={selectedIds.size === 0}
+              className="hidden sm:inline-flex af-btn-ghost px-4 py-2 text-sm disabled:opacity-40"
+            >
+              Excluir Selecionados ({selectedIds.size})
+            </button>
+          )}
+          {/* Mobile contextual actions: only when selection active */}
+          {selectionMode && selectedIds.size > 0 && (
+            <div className="inline-flex sm:hidden gap-2">
+              <button onClick={bulkDeleteSelected} className="af-btn-ghost px-3 py-2 text-sm">Excluir Selecionados</button>
+            </div>
+          )}
+          <button onClick={openCreate} className="af-btn-primary">Nova Reserva</button>
+        </div>
       </div>
 
       {/* Modal: Seletor de dia/mês/ano */}
@@ -280,10 +367,16 @@ export default function Reservas() {
       {/* Calendário: seletor semanal simples (Dom–Sáb) */}
       <div className="af-section af-card-elev shadow-sm overflow-hidden min-w-0">
         <div className="mb-4 grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
-          <div className="text-[15px] lg:text-base font-medium text-white order-1">Calendário — Semana {weekIndex + 1} de {format(viewMonthDate, 'MMMM yyyy', { locale: ptBR })}</div>
+          <div className="af-subtitle order-1">
+            {(() => {
+              const ws = weekDays[0]
+              const we = weekDays[6]
+              return `Semana de ${format(ws, 'dd/MM')} até ${format(we, 'dd/MM')}`
+            })()}
+          </div>
           <div className="flex items-center gap-3 justify-between md:justify-center order-2">
             <button
-              className="af-btn-ghost text-sm"
+              className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-white/85 px-3.5 py-1.5 text-sm shadow-sm transition"
               onClick={() => {
                 if (weekIndex > 0) setWeekIndex(weekIndex - 1)
                 else { // ir para a última semana do mês anterior (0..4)
@@ -294,7 +387,7 @@ export default function Reservas() {
               }}
             >← Semana</button>
             <button
-              className="af-btn-ghost text-sm"
+              className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-white/85 px-3.5 py-1.5 text-sm shadow-sm transition"
               onClick={() => {
                 const today = new Date()
                 const monthRef = new Date(today.getFullYear(), today.getMonth(), 1)
@@ -306,7 +399,7 @@ export default function Reservas() {
               }}
             >Hoje</button>
             <button
-              className="af-btn-ghost text-sm"
+              className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-white/85 px-3.5 py-1.5 text-sm shadow-sm transition"
               onClick={() => {
                 if (weekIndex < 4) setWeekIndex(weekIndex + 1)
                 else { // ir para a primeira semana do próximo mês
@@ -330,29 +423,30 @@ export default function Reservas() {
           </div>
         </div>
 
-        {/* Linha única da semana: Dom–Sáb (7 dias sempre visíveis) */}
-        <div className="overflow-x-auto">
-          <div className="min-w-[640px] rounded-2xl ring-1 ring-white/5 overflow-hidden">
-            <div className="grid grid-flow-col auto-cols-fr">
+        {/* Linha única da semana: Dom–Sáb (7 dias, sem scroll em mobile) */}
+        <div className="">
+          <div className="rounded-2xl ring-1 ring-white/5 overflow-hidden">
+            <div className="grid grid-cols-7">
               {weekDays.map((d, idx) => {
                 const y = d.getFullYear(); const m = String(d.getMonth() + 1).padStart(2, '0'); const dd = String(d.getDate()).padStart(2, '0')
                 const key = `${y}-${m}-${dd}`
-                const totalDoDia = (reservasByDate.get(key) ?? []).filter((r: any) => (r?.status ?? 'pendente') !== 'cancelada').length
+                // Contabiliza todas as reservas do dia para refletir a lista
+                const totalDoDia = (reservasByDate.get(key) ?? []).length
                 const isSelected = key === selectedDay
                 return (
                   <button
                     key={idx}
                     onClick={() => setSelectedDay(key)}
-                    className={`relative p-3 sm:p-4 text-center transition
+                    className={`relative p-2 sm:p-3 text-center transition
                       ${isSelected ? 'bg-[rgba(16,34,62,0.9)]' : 'bg-[rgba(9,16,28,0.85)] hover:bg-[rgba(13,22,38,0.9)]'}
                       ${idx !== 0 ? 'border-l border-white/5' : ''}
                       ${flashDay === key ? 'af-glow' : ''}
                     `}
                   >
                     <div className={`absolute inset-x-0 top-0 h-1 ${isSelected ? 'bg-gradient-to-r from-[#1f4fbf] to-[#3b82f6]' : 'bg-transparent'}`} />
-                    <div className="text-[11px] sm:text-[12px] text-white/60">{format(d, 'EEE', { locale: ptBR })}</div>
-                    <div className="mt-1 text-lg sm:text-xl md:text-2xl font-semibold text-white">{d.getDate()}</div>
-                    <div className="mt-1 text-[11px] sm:text-[12px] md:text-[13px] text-white/70">{totalDoDia} reserva{totalDoDia === 1 ? '' : 's'}</div>
+                    <div className="text-[10px] sm:text-[12px] text-white/60">{format(d, 'EEE', { locale: ptBR })}</div>
+                    <div className="mt-1 text-base sm:text-lg md:text-xl font-semibold text-white">{d.getDate()}</div>
+                    <div className="mt-1 text-[10px] sm:text-[12px] md:text-[13px] text-white/70">{totalDoDia} reserva{totalDoDia === 1 ? '' : 's'}</div>
                   </button>
                 )
               })}
@@ -360,9 +454,9 @@ export default function Reservas() {
           </div>
         </div>
       </div>
-      <div className="af-section af-card-elev shadow-sm backdrop-blur overflow-hidden min-w-0">
-        <div className="mb-3 text-[15px] lg:text-base font-medium text-white">Reservas do dia
-          <span className="ml-2 af-chip text-white/70">{selectedDay}</span>
+      <div className="af-section af-card-elev shadow-sm backdrop-blur overflow-visible min-w-0 ring-1 ring-white/10 bg-[rgba(7,12,20,0.55)]">
+        <div className="mb-3 af-subtitle">Reservas do dia
+          <span className="ml-2 af-chip text-white/70">{format(parseYYYYMMDD(selectedDay), 'dd/MM/yy', { locale: ptBR })}</span>
         </div>
         {/* Filtros da lista */}
         <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3">
@@ -381,6 +475,8 @@ export default function Reservas() {
             <option className="af-card" value="pendente">pendente</option>
             <option className="af-card" value="confirmada">confirmada</option>
             <option className="af-card" value="cancelada">cancelada</option>
+            <option className="af-card" value="finalizada">finalizada</option>
+            <option className="af-card" value="expirada">expirada</option>
           </select>
           <select
             className="af-field"
@@ -398,9 +494,35 @@ export default function Reservas() {
           <ul className="space-y-4">
             {filtered.map((r, idx) => (
               <li key={r.id}>
-                <div className="af-list-card cursor-pointer" onClick={() => toggleExpand(r.id)}>
+                <div
+                  className={`af-list-card af-list-card-info cursor-pointer overflow-visible ${
+                    (() => { const s = effectiveStatus(r); return s === 'finalizada' ? 'border-t-2 border-blue-300/70' : s === 'confirmada' ? 'border-t-2 border-blue-400/60' : s === 'expirada' ? 'border-t-2 border-white/30' : s === 'cancelada' ? 'border-t-2 border-red-400/60' : 'border-t-2 border-white/20' })()
+                  } ${selectionMode && selectedIds.has(String(r.id)) ? 'af-selected af-glow ring-2 ring-blue-400/50' : ''}`}
+                  onClick={() => {
+                    if (suppressNextTapIdRef.current === String(r.id)) {
+                      suppressNextTapIdRef.current = null
+                      return
+                    }
+                    if (selectionMode) {
+                      toggleSelectId(r.id, !selectedIds.has(String(r.id)))
+                    } else {
+                      // não abre menu ao clicar no card; menu só abre ao clicar no chip de status
+                    }
+                  }}
+                  onTouchStart={() => onCardTouchStart(r.id)}
+                  onTouchEnd={onCardTouchEnd}
+                  onTouchCancel={onCardTouchEnd}
+                >
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-5 sm:items-center">
                     <div className="col-span-3 space-y-1.5 min-w-0">
+                      {selectionMode && (
+                        <input
+                          type="checkbox"
+                          className="hidden sm:inline-block h-4 w-4 mr-2 rounded border-white/30 bg-transparent align-middle"
+                          checked={selectedIds.has(String(r.id))}
+                          onChange={(e) => toggleSelectId(r.id, e.target.checked)}
+                        />
+                      )}
                       <div className="flex items-center gap-3">
                         <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-700/60 text-[12px] font-semibold text-white">{idx + 1}</span>
                         <span className="truncate title">{clienteNome(r.cliente_id)}</span>
@@ -412,25 +534,45 @@ export default function Reservas() {
                       </div>
                     </div>
                     <div className="col-span-2 flex flex-wrap items-center justify-start gap-3 sm:justify-end">
-                      <span className="af-badge text-[12px]">
-                        <span className="af-badge-dot" />
-                        {(r.status ?? 'pendente')}
-                      </span>
-                      <span className="af-badge text-[12px]">
-                        <span className="af-badge-dot" />
-                        {r.status_pagamento ? 'Pago' : 'Pendente'}
-                      </span>
-                      <div className="flex items-center gap-2.5">
-                        <button onClick={(e) => { e.stopPropagation(); setStatus(r.id, 'confirmada') }} className="af-btn-ghost text-sm">Confirmar</button>
-                        <button onClick={(e) => { e.stopPropagation(); setStatus(r.id, 'cancelada') }} className="af-btn-ghost text-sm">Cancelar</button>
-                        <button onClick={(e) => { e.stopPropagation(); togglePago(r.id, !!r.status_pagamento) }} className="af-btn-ghost text-sm">{r.status_pagamento ? 'Desmarcar pago' : 'Marcar pago'}</button>
+                      {/* Status efetivo: vira um chip clicável para abrir o menu */}
+                      <div className="relative" data-status-menu>
+                        {(() => {
+                          const s = effectiveStatus(r)
+                          const chipCls = s === 'finalizada'
+                            ? 'bg-blue-500/20 text-blue-200 ring-1 ring-blue-400/30'
+                            : s === 'confirmada'
+                              ? 'bg-blue-500/15 text-blue-200 ring-1 ring-blue-400/25'
+                              : s === 'expirada'
+                                ? 'bg-white/10 text-white/80 ring-1 ring-white/20'
+                                : s === 'cancelada'
+                                  ? 'bg-red-500/10 text-red-200 ring-1 ring-red-400/25'
+                                  : 'bg-white/10 text-white/90 ring-1 ring-white/20'
+                          return (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setExpandedId(expandedId === r.id ? null : r.id) }}
+                              className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[12px] ${chipCls}`}
+                            >
+                              <span className="inline-block h-2 w-2 rounded-full bg-current/80" />
+                              {s}
+                            </button>
+                          )
+                        })()}
+                        {expandedId === r.id && (
+                          <div className="absolute right-0 z-50 mt-2 w-44 rounded-md af-card-elev p-1 shadow-xl">
+                            <button onClick={(e) => { e.stopPropagation(); setStatus(r.id, 'confirmada'); setExpandedId(null) }} className="w-full text-left af-btn-ghost px-2 py-1.5 text-sm">Confirmar</button>
+                            <button onClick={(e) => { e.stopPropagation(); updateReserva.mutate({ id: r.id, payload: { status: 'finalizada' } as any }); setExpandedId(null) }} className="w-full text-left af-btn-ghost px-2 py-1.5 text-sm">Finalizar</button>
+                            <button onClick={(e) => { e.stopPropagation(); updateReserva.mutate({ id: r.id, payload: { status: 'expirada' } as any }); setExpandedId(null) }} className="w-full text-left af-btn-ghost px-2 py-1.5 text-sm">Expirar</button>
+                            <button onClick={(e) => { e.stopPropagation(); setStatus(r.id, 'cancelada'); setExpandedId(null) }} className="w-full text-left af-btn-ghost px-2 py-1.5 text-sm">Cancelar</button>
+                          </div>
+                        )}
                       </div>
-                      {expandedId === r.id && (
-                        <>
-                          <button onClick={(e) => { e.stopPropagation(); openEdit(r) }} className="af-btn-ghost text-xs">Editar</button>
-                          <button onClick={(e) => { e.stopPropagation(); if (confirm('Tem certeza que deseja excluir esta reserva?')) deleteReserva.mutate(r.id) }} className="af-btn-ghost text-xs">Excluir</button>
-                        </>
-                      )}
+                      {/* Indicador de pagamento (bolinha verde quando pago) */}
+                      <span className="inline-flex items-center gap-1" title={r.status_pagamento ? 'Pago' : 'Pagamento pendente'}>
+                        <span className={`inline-block h-2.5 w-2.5 rounded-full ${r.status_pagamento ? 'bg-green-400' : 'bg-white/30'}`} />
+                      </span>
+                      {/* Editar / Excluir sempre visíveis */}
+                      <button onClick={(e) => { e.stopPropagation(); openEdit(r) }} className="af-btn-ghost text-xs">Editar</button>
+                      <button onClick={(e) => { e.stopPropagation(); if (confirm('Tem certeza que deseja excluir esta reserva?')) deleteReserva.mutate(r.id) }} className="af-btn-ghost text-xs">Excluir</button>
                     </div>
                   </div>
                 </div>
@@ -516,6 +658,8 @@ export default function Reservas() {
                     <option value="pendente" className="af-card">pendente</option>
                     <option value="confirmada" className="af-card">confirmada</option>
                     <option value="cancelada" className="af-card">cancelada</option>
+                    <option value="finalizada" className="af-card">finalizada</option>
+                    <option value="expirada" className="af-card">expirada</option>
                   </select>
                 </div>
                 <div>

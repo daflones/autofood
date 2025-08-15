@@ -49,6 +49,9 @@ export interface Qrcode extends BaseRow {
   codigo?: string
   descricao?: string
   status?: 'Resgatado' | 'Pendente' | 'Vencido'
+  cliente_id?: string
+  tipo_brinde?: string
+  data_resgate?: string | null // YYYY-MM-DD or null when cleared
   // add other columns
   campaign?: string
   uses_limit?: number

@@ -60,10 +60,51 @@ export default function Clientes() {
   }
 
   const [view, setView] = useState<'lista' | 'kanban'>('lista')
+  // Bulk selection (lista view)
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const longPressTimerListRef = useRef<number | null>(null)
+  const suppressNextTapListIdRef = useRef<string | null>(null)
+  const enableSelection = () => setSelectionMode(true)
+  const disableSelection = () => { setSelectionMode(false); setSelectedIds(new Set()) }
+  const toggleSelectId = (id: string | number, checked: boolean) => {
+    const key = String(id)
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (checked) next.add(key)
+      else next.delete(key)
+      return next
+    })
+  }
+  const bulkDeleteSelected = async () => {
+    if (selectedIds.size === 0) return
+    if (!confirm(`Excluir ${selectedIds.size} cliente(s)?`)) return
+    const ids = Array.from(selectedIds)
+    await Promise.all(ids.map((id) => deleteCliente.mutateAsync(id)))
+    disableSelection()
+  }
+  const onCardTouchStartLista = (id: string | number) => {
+    if (longPressTimerListRef.current) window.clearTimeout(longPressTimerListRef.current)
+    longPressTimerListRef.current = window.setTimeout(() => {
+      setSelectionMode(true)
+      toggleSelectId(id, true)
+      // Avoid synthetic click toggling off right after long-press (only for this card)
+      suppressNextTapListIdRef.current = String(id)
+    }, 2000)
+  }
+  const onCardTouchEndLista = () => {
+    if (longPressTimerListRef.current) {
+      window.clearTimeout(longPressTimerListRef.current)
+      longPressTimerListRef.current = null
+    }
+  }
   // Touch DnD state (mobile)
   const [touchDraggingId, setTouchDraggingId] = useState<string | null>(null)
   const [touchOverStatus, setTouchOverStatus] = useState<LeadStatus | null>(null)
   const longPressTimerRef = useRef<number | null>(null)
+  const kanbanSelectTimerRef = useRef<number | null>(null)
+  const suppressNextTapKanbanIdRef = useRef<string | null>(null)
+  const dndActivatedRef = useRef(false)
   const isLongPressActiveRef = useRef(false)
   const kanbanRef = useRef<HTMLDivElement | null>(null)
   const sourceColRef = useRef<HTMLElement | null>(null)
@@ -238,8 +279,12 @@ export default function Clientes() {
   }
   const startLongPress = (id: string) => {
     if (longPressTimerRef.current) window.clearTimeout(longPressTimerRef.current)
+    if (kanbanSelectTimerRef.current) window.clearTimeout(kanbanSelectTimerRef.current)
     isLongPressActiveRef.current = false
+    // DnD activation (short long-press)
     longPressTimerRef.current = window.setTimeout(() => {
+      if (selectionMode) return // don't start DnD while selecting
+      dndActivatedRef.current = true
       isLongPressActiveRef.current = true
       setTouchDraggingId(id)
       // Improve UX: disable text selection while dragging
@@ -268,12 +313,30 @@ export default function Clientes() {
         }
       } catch {}
     }, 220) // ~220ms feels responsive without accidental drags
+    // Selection activation (2s long-press)
+    kanbanSelectTimerRef.current = window.setTimeout(() => {
+      if (isLongPressActiveRef.current || dndActivatedRef.current) return // already dragging, skip selection
+      // Activate selection mode and select the card
+      setSelectionMode(true)
+      setSelectedIds((prev) => { const s = new Set(prev); s.add(String(id)); return s })
+      // Avoid synthetic click immediately toggling off (only for this card)
+      suppressNextTapKanbanIdRef.current = String(id)
+      // Cancel any pending DnD
+      if (longPressTimerRef.current) {
+        window.clearTimeout(longPressTimerRef.current)
+        longPressTimerRef.current = null
+      }
+    }, 2000)
   }
 
   const cancelLongPress = () => {
     if (longPressTimerRef.current) {
       window.clearTimeout(longPressTimerRef.current)
       longPressTimerRef.current = null
+    }
+    if (kanbanSelectTimerRef.current) {
+      window.clearTimeout(kanbanSelectTimerRef.current)
+      kanbanSelectTimerRef.current = null
     }
   }
 
@@ -408,7 +471,7 @@ export default function Clientes() {
       </div>
       {view === 'lista' ? (
         <div>
-          <div className="af-section af-card-elev shadow-sm backdrop-blur overflow-hidden min-w-0">
+          <div className="af-section af-card-elev shadow-sm backdrop-blur overflow-hidden min-w-0 ring-1 ring-white/10 bg-[rgba(7,12,20,0.55)]">
             <form onSubmit={onCreate} className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <input
                 placeholder="Nome"
@@ -425,7 +488,7 @@ export default function Clientes() {
               <button
                 type="submit"
                 disabled={createCliente.isPending}
-                className="af-btn-primary disabled:opacity-60"
+                className="af-btn-primary px-3 py-2 text-xs sm:text-sm disabled:opacity-60"
               >
                 {createCliente.isPending ? 'Adicionando…' : 'Adicionar'}
               </button>
@@ -433,7 +496,34 @@ export default function Clientes() {
           </div>
 
           <div className="af-section af-card-elev shadow-sm backdrop-blur overflow-hidden min-w-0">
-            <div className="mb-3 text-sm font-medium text-white">Lista de Clientes</div>
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <div className="af-subtitle">Lista de Clientes</div>
+              <div className="flex items-center gap-2">
+                {/* Desktop: toggle selection mode */}
+                <button
+                  onClick={() => (selectionMode ? disableSelection() : enableSelection())}
+                  className="hidden sm:inline-flex af-btn-ghost px-3 py-1.5 text-xs"
+                  title="Mais opções"
+                >
+                  ⋯
+                </button>
+                {selectionMode && (
+                  <button
+                    onClick={bulkDeleteSelected}
+                    disabled={selectedIds.size === 0}
+                    className="hidden sm:inline-flex af-btn-ghost px-3 py-1.5 text-xs disabled:opacity-40"
+                  >
+                    Excluir Selecionados ({selectedIds.size})
+                  </button>
+                )}
+                {/* Mobile contextual actions: only show when selection is active */}
+                {selectionMode && selectedIds.size > 0 && (
+                  <div className="inline-flex sm:hidden gap-2">
+                    <button onClick={bulkDeleteSelected} className="af-btn-ghost px-3 py-1.5 text-xs">Excluir Selecionados</button>
+                  </div>
+                )}
+              </div>
+            </div>
             <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
               <input
                 placeholder="Buscar por nome ou telefone"
@@ -486,10 +576,42 @@ export default function Clientes() {
             {!isLoading && !error ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4">
                 {filteredClientes.slice(0, visibleCount).map((c) => (
-                  <div key={c.id} className="af-list-card">
+                  <div
+                    key={c.id}
+                    className={`af-list-card af-list-card-info relative overflow-hidden transition-shadow ${
+                      ((c as any).lead_status ?? '').toString().toLowerCase() === 'ativo'
+                        ? 'border-t-2 border-blue-400/60'
+                        : ((c as any).lead_status ?? '').toString().toLowerCase() === 'inativo'
+                          ? 'border-t-2 border-red-400/60'
+                          : 'border-t-2 border-white/20'
+                    } ${selectionMode && selectedIds.has(String(c.id)) ? 'af-selected af-glow ring-2 ring-blue-400/50' : ''}`}
+                    onTouchStart={() => onCardTouchStartLista(c.id)}
+                    onTouchEnd={onCardTouchEndLista}
+                    onTouchCancel={onCardTouchEndLista}
+                    onClick={() => {
+                      if (suppressNextTapListIdRef.current === String(c.id)) {
+                        suppressNextTapListIdRef.current = null
+                        return
+                      }
+                      if (selectionMode) {
+                        toggleSelectId(c.id, !selectedIds.has(String(c.id)))
+                      }
+                    }}
+                  >
+                    <div className="pointer-events-none absolute inset-0 opacity-[0.04]" style={{
+                      background: 'radial-gradient(1200px 500px at -10% -10%, rgba(255,255,255,0.35), transparent 60%)'
+                    }} />
                     <div className="af-card-head flex items-start justify-between gap-3">
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="h-10 w-10 rounded-full bg-[#0b1422] grid place-items-center text-white text-[12px] font-semibold shrink-0">
+                        {selectionMode && (
+                          <input
+                            type="checkbox"
+                            className="mt-1 hidden sm:block h-4 w-4 rounded border-white/30 bg-transparent"
+                            checked={selectedIds.has(String(c.id))}
+                            onChange={(e) => toggleSelectId(String(c.id), e.target.checked)}
+                          />
+                        )}
+                        <div className="h-11 w-11 rounded-full bg-[#0b1422] grid place-items-center text-white text-[12px] font-semibold shrink-0 shadow-inner">
                           {(() => {
                             const name = (c.nome ?? 'Cliente').toString().trim()
                             const ini = name.split(/\s+/).map((p: string) => p[0]).slice(0,2).join('').toUpperCase()
@@ -497,8 +619,8 @@ export default function Clientes() {
                           })()}
                         </div>
                         <div className="min-w-0">
-                          <div className="truncate title text-[15px] leading-5">{shortName(c.nome)}</div>
-                          <div className="subtle text-xs text-white/80 break-words" style={{ marginTop: '0.4rem' }}>
+                          <div className="truncate title text-[16px] leading-5">{shortName(c.nome)}</div>
+                          <div className="subtle text-xs text-white/85 break-words" style={{ marginTop: '0.35rem' }}>
                             <span className="inline-flex items-center gap-1.5 align-top">
                               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="opacity-80">
                                 <path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2a1 1 0 011.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 011 1V21a1 1 0 01-1 1C10.85 22 2 13.15 2 2a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.46.57 3.58a1 1 0 01-.24 1.01l-2.2 2.2z" fill="currentColor"/>
@@ -508,7 +630,7 @@ export default function Clientes() {
                           </div>
                         </div>
                       </div>
-                      <span className="af-badge text-[11px] shrink-0">
+                      <span className="af-badge text-[11px] shrink-0 shadow-sm">
                         <span className="af-badge-dot" />
                         {(() => {
                           const s = (c as any).lead_status
@@ -528,18 +650,24 @@ export default function Clientes() {
                     </div>
                     <div className="af-list-sep" />
                     <div className="grid grid-cols-2 gap-2.5">
-                      <div className="af-metric-soft">
+                      <div className="af-metric-soft ring-1 ring-white/10">
                         <div className="label">Brindes</div>
                         <div className="value text-[15px]">{c.total_brindes ?? 0}</div>
                       </div>
-                      <div className="af-metric-soft">
+                      <div className="af-metric-soft ring-1 ring-white/10">
                         <div className="label">Reservas</div>
                         <div className="value text-[15px]">{c.total_reservas ?? 0}</div>
                       </div>
                     </div>
                     <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2">
                       <button onClick={() => openEdit(c)} className="w-full sm:w-auto af-btn-ghost px-3 py-1.5 text-xs">Editar</button>
-                      <button onClick={() => { if (confirm('Excluir este cliente?')) deleteCliente.mutate(c.id) }} className="w-full sm:w-auto af-btn-ghost px-3 py-1.5 text-xs">Excluir</button>
+                      {/* Oculta excluir por card no desktop quando em modo seleção */}
+                      <button
+                        onClick={() => { if (confirm('Excluir este cliente?')) deleteCliente.mutate(c.id) }}
+                        className={`w-full sm:w-auto af-btn-ghost px-3 py-1.5 text-xs ${selectionMode ? 'hidden sm:inline-flex sm:hidden' : ''}`}
+                      >
+                        Excluir
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -563,11 +691,36 @@ export default function Clientes() {
           </div>
         </div>
       ) : (
-        <div className="rounded-xl af-card-elev p-4 lg:p-5 xl:p-6 shadow-sm backdrop-blur overflow-hidden min-w-0">
+        <div className="rounded-xl af-card-elev p-4 lg:p-5 xl:p-6 shadow-sm backdrop-blur overflow-hidden min-w-0 ring-1 ring-white/10 bg-[rgba(7,12,20,0.55)]">
           <div className="mb-3 flex items-center justify-between">
             <div className="text-sm font-medium text-white">Kanban por lead status</div>
-            <div className="text-xs text-white/80">
-              Novo Lead: {grouped.novo_lead.length} • Interessado: {grouped.interessado.length} • Ativo: {grouped.ativo.length} • Inativo: {grouped.inativo.length}
+            <div className="flex items-center gap-2">
+              {/* Desktop: toggle selection mode */}
+              <button
+                onClick={() => (selectionMode ? disableSelection() : enableSelection())}
+                className="hidden sm:inline-flex af-btn-ghost px-3 py-1.5 text-xs"
+                title="Mais opções"
+              >
+                ⋯
+              </button>
+              {selectionMode && (
+                <button
+                  onClick={bulkDeleteSelected}
+                  disabled={selectedIds.size === 0}
+                  className="hidden sm:inline-flex af-btn-ghost px-3 py-1.5 text-xs disabled:opacity-40"
+                >
+                  Excluir Selecionados ({selectedIds.size})
+                </button>
+              )}
+              {/* Mobile contextual actions */}
+              {selectionMode && selectedIds.size > 0 && (
+                <div className="inline-flex sm:hidden gap-2">
+                  <button onClick={bulkDeleteSelected} className="af-btn-ghost px-3 py-1.5 text-xs">Excluir Selecionados</button>
+                </div>
+              )}
+              <div className="text-xs text-white/80">
+                Novo Lead: {grouped.novo_lead.length} • Interessado: {grouped.interessado.length} • Ativo: {grouped.ativo.length} • Inativo: {grouped.inativo.length}
+              </div>
             </div>
           </div>
           <div ref={kanbanRef} className="grid grid-cols-1 gap-4 md:grid-cols-4 md:gap-5 overflow-x-auto af-snap-x py-1 pr-1">
@@ -590,13 +743,35 @@ export default function Clientes() {
                     <div
                       key={c.id}
                       data-card-id={c.id}
-                      draggable
-                      onDragStart={(e) => onDragStart(e, c.id)}
+                      draggable={!selectionMode}
+                      onDragStart={(e) => { if (!selectionMode) onDragStart(e, c.id) }}
                       onTouchStart={handleCardTouchStart(c.id)}
                       onTouchMove={handleCardTouchMove}
                       onTouchEnd={handleCardTouchEnd}
                       onTouchCancel={handleCardTouchCancel}
-                      className={`af-kanban-card overflow-hidden ${touchDraggingId === c.id ? 'opacity-70 ring-1 ring-blue-400/60 pointer-events-none' : 'cursor-grab active:cursor-grabbing'}`}
+                      onClick={() => {
+                        if (suppressNextTapKanbanIdRef.current === String(c.id)) {
+                          suppressNextTapKanbanIdRef.current = null
+                          return
+                        }
+                        if (selectionMode) {
+                          const key = String(c.id)
+                          toggleSelectId(key, !selectedIds.has(key))
+                        }
+                      }}
+                      className={`af-kanban-card overflow-hidden bg-[rgba(15,22,36,0.88)] ring-1 ring-white/15 shadow-xl ${
+                        statusCol === 'ativo'
+                          ? 'border-t-2 border-blue-400/60'
+                          : statusCol === 'inativo'
+                            ? 'border-t-2 border-red-400/60'
+                            : statusCol === 'interessado'
+                              ? 'border-t-2 border-white/30'
+                              : 'border-t-2 border-white/20'
+                      } ${
+                        selectionMode && selectedIds.has(String(c.id))
+                          ? 'ring-2 ring-blue-400/50 af-glow shadow-2xl translate-y-[-1px] relative z-[1]'
+                          : (touchDraggingId === c.id ? 'opacity-70 ring-1 ring-blue-400/60 pointer-events-none' : 'cursor-grab active:cursor-grabbing')
+                      }`}
                     >
                       <div className="af-card-head flex items-center justify-between gap-3">
                         <div className="min-w-0">

@@ -22,8 +22,15 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
         className={`fixed z-40 flex h-[100dvh] w-42 flex-col af-aside p-4 transition-transform lg:static ${open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
       >
         <div className="mb-4 relative">
-          <div className="min-h-20 sm:min-h-24 md:min-h-24 flex items-end pr-6 overflow-hidden">
-            <h1 className="w-full bg-clip-text text-transparent af-grad font-extrabold tracking-tight leading-none text-xl sm:text-2xl md:text-3xl select-none">AutoFood</h1>
+          <div className="min-h-20 sm:min-h-24 md:min-h-24 pr-6 overflow-hidden relative">
+            {/* Wordmark fills the container without cropping using object-contain */}
+            <img
+              src="/logo-wordmark.svg"
+              alt="AutoFood"
+              className="absolute inset-0 w-full h-full object-contain select-none pointer-events-none"
+              draggable={false}
+            />
+            <span className="sr-only">AutoFood</span>
           </div>
           <button
             onClick={onClose}

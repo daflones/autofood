@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="480" height="120" viewBox="0 0 480 120" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="AutoFood">
+  <defs>
+    <linearGradient id="afGrad" x1="0" y1="0" x2="480" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1f4fbf"/>
+      <stop offset="1" stop-color="#3b82f6"/>
+    </linearGradient>
+  </defs>
+  <rect width="480" height="120" fill="transparent"/>
+  <g>
+    <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle"
+          font-family="Inter, Segoe UI, Roboto, Arial, sans-serif" font-weight="800"
+          font-size="64" fill="url(#afGrad)">AutoFood</text>
+  </g>
+</svg>
