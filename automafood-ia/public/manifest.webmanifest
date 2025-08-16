@@ -1,6 +1,6 @@
 {
-  "name": "AutomaFood",
-  "short_name": "AutomaFood",
+  "name": "AutoFood",
+  "short_name": "AutoFood",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0B1220",
