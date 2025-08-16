@@ -21,6 +21,7 @@ import {
   getMyRestaurante,
   updateMyRestaurante,
   type Restaurante,
+  updateQrcodeExact,
 } from '../services/db'
 
 // Keys
@@ -122,6 +123,18 @@ export function useUpdateQrcode() {
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: keys.qrcodes })
       qc.invalidateQueries({ queryKey: keys.qrcode(vars.id) })
+    },
+  })
+}
+
+// Update a single brinde row by (id + created_at) to avoid touching multiple rows with the same id
+export function useUpdateQrcodeExact() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, created_at, payload }: { id: string; created_at: string; payload: Partial<Omit<Qrcode, 'id' | 'restaurante_id' | 'created_at'>> }) =>
+      updateQrcodeExact(id, created_at, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.qrcodes })
     },
   })
 }

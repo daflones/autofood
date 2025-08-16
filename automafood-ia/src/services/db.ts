@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabaseClient'
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            import { supabase } from '../lib/supabaseClient'
 import type { User } from '@supabase/supabase-js'
 
 // Types (adjust/extend according to your DB schema)
@@ -48,10 +48,11 @@ export interface Reserva extends BaseRow {
 export interface Qrcode extends BaseRow {
   codigo?: string
   descricao?: string
-  status?: 'Resgatado' | 'Pendente' | 'Vencido'
+  status?: 'Resgatado' | 'Pendente' | 'Vencido' | 'Expirado'
   cliente_id?: string
   tipo_brinde?: string
   data_resgate?: string | null // YYYY-MM-DD or null when cleared
+  data_validade?: string // YYYY-MM-DD, NOT NULL in DB
   // add other columns
   campaign?: string
   uses_limit?: number
@@ -254,7 +255,32 @@ export async function getQrcodeById(id: string) {
 
 export async function createQrcode(payload: Omit<Qrcode, 'id' | 'restaurante_id'>) {
   const rid = await getRestauranteId()
-  return guardedInsert<Qrcode>('qrcodes', payload, rid)
+  // Requisito: sempre enviar este ID fixo para o brinde
+  const genId = 'f1c53073-039c-4de1-b4be-6deddba34131'
+  // Definir data de validade padrão: 10 dias após a criação (YYYY-MM-DD)
+  const ensureValidDate = (d: Date) => {
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${day}`
+  }
+  const defaultValidade = (() => {
+    const dt = new Date()
+    dt.setDate(dt.getDate() + 10)
+    return ensureValidDate(dt)
+  })()
+  const finalPayload = {
+    ...(cleanPayload(payload) as object),
+    // Forçar validade: sempre +10 dias a partir de agora
+    data_validade: defaultValidade,
+  }
+  const { data, error } = await supabase
+    .from('qrcodes')
+    .insert([{ ...finalPayload, id: genId, restaurante_id: rid }])
+    .select('*')
+    .single()
+  if (error) throw error
+  return data as Qrcode
 }
 
 export async function updateQrcode(id: string, payload: Partial<Omit<Qrcode, 'id' | 'restaurante_id'>>) {
@@ -262,7 +288,46 @@ export async function updateQrcode(id: string, payload: Partial<Omit<Qrcode, 'id
   return guardedUpdate<Qrcode>('qrcodes', id, payload, rid)
 }
 
+// Precise update for qrcodes: use (id + restaurante_id + created_at) so we affect only one row
+export async function updateQrcodeByTipo(
+  id: string,
+  tipo_brinde: string,
+  payload: Partial<Omit<Qrcode, 'id' | 'restaurante_id' | 'created_at'>>,
+) {
+  const rid = await getRestauranteId()
+  const { data, error } = await supabase
+    .from('qrcodes')
+    .update(cleanPayload(payload) as object)
+    .eq('id', id)
+    .eq('restaurante_id', rid)
+    .eq('tipo_brinde', tipo_brinde)
+    .select('*')
+    .maybeSingle()
+  if (error) throw error
+  return (data as Qrcode | null) ?? null
+}
+
 export async function deleteQrcode(id: string) {
   const rid = await getRestauranteId()
   return guardedDelete('qrcodes', id, rid)
+}
+
+// Compatibility shim: callers may still provide (id + created_at). We map it to (id + tipo_brinde)
+export async function updateQrcodeExact(
+  id: string,
+  created_at: string,
+  payload: Partial<Omit<Qrcode, 'id' | 'restaurante_id' | 'created_at'>>,
+) {
+  const rid = await getRestauranteId()
+  const { data, error } = await supabase
+    .from('qrcodes')
+    .select('tipo_brinde')
+    .eq('id', id)
+    .eq('restaurante_id', rid)
+    .eq('created_at', created_at)
+    .maybeSingle()
+  if (error) throw error
+  const tipo = (data as any)?.tipo_brinde as string | undefined
+  if (!tipo) throw new Error('tipo_brinde não encontrado para este brinde.')
+  return updateQrcodeByTipo(id, tipo, payload)
 }

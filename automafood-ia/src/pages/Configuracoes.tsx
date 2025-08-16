@@ -53,7 +53,7 @@ export default function Configuracoes() {
 
   return (
     <div className="space-y-6 lg:space-y-8">
-      <h1 className="text-2xl md:text-3xl xl:text-4xl font-semibold text-white">Configurações</h1>
+      <h1 className="af-section-title">Configurações</h1>
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 lg:gap-6">
         <div className="xl:col-span-7 af-section af-card-elev shadow-sm backdrop-blur overflow-hidden min-w-0">
           <div className="mb-3 text-sm lg:text-[15px] font-medium text-white">Dados do restaurante</div>

@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { startOfWeek, addDays, addWeeks, format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useReservas, useClientes, useDeleteReserva, useCreateReserva, useUpdateReserva } from '../hooks/useRestaurantData'
@@ -143,6 +144,8 @@ export default function Reservas() {
   // Modal state (create/edit)
   const [open, setOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  // posição do menu de status (portal)
+  const [statusMenuPos, setStatusMenuPos] = useState<{ id: string; top: number; left: number } | null>(null)
   const [form, setForm] = useState<{ cliente_id: string; data_reserva: string; hora_reserva: string; status: string; status_pagamento: boolean; n_pessoas: number; observacao: string }>({
     cliente_id: '',
     data_reserva: '',
@@ -229,7 +232,11 @@ export default function Reservas() {
   // Visão simplificada: seletor semanal (Dom–Sáb)
   const initSelected = parseYYYYMMDD(selectedDay)
   const [viewMonthDate, setViewMonthDate] = useState<Date>(() => new Date(initSelected.getFullYear(), initSelected.getMonth(), 1))
-  const [weekIndex, setWeekIndex] = useState<number>(0) // 0..4 (5 semanas)
+  // Semana inicial deve representar o dia de hoje/selecionado
+  const [weekIndex, setWeekIndex] = useState<number>(() => {
+    const monthRef = new Date(initSelected.getFullYear(), initSelected.getMonth(), 1)
+    return weekIndexFor(initSelected, monthRef)
+  }) // 0..4 (5 semanas)
   const monthStartWeek = startOfWeek(new Date(viewMonthDate.getFullYear(), viewMonthDate.getMonth(), 1), { weekStartsOn: 0 })
   const viewWeekStart = addWeeks(monthStartWeek, weekIndex)
   const weekDays: Date[] = Array.from({ length: 7 }, (_, i) => addDays(viewWeekStart, i))
@@ -247,7 +254,7 @@ export default function Reservas() {
   }
 
   const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-  const weekIndexFor = (target: Date, monthRef: Date) => {
+  function weekIndexFor(target: Date, monthRef: Date) {
     const base = startOfWeek(new Date(monthRef.getFullYear(), monthRef.getMonth(), 1), { weekStartsOn: 0 })
     const diffMs = target.setHours(0,0,0,0) - base.setHours(0,0,0,0)
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
@@ -269,7 +276,7 @@ export default function Reservas() {
   return (
     <div className="space-y-8 lg:space-y-10">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl md:text-3xl xl:text-4xl font-semibold bg-clip-text text-transparent af-grad">Reservas</h1>
+        <h1 className="af-section-title">Reservas</h1>
         <div className="flex items-center gap-2">
           {/* Desktop: toggle selection */}
           <button
@@ -376,7 +383,7 @@ export default function Reservas() {
           </div>
           <div className="flex items-center gap-3 justify-between md:justify-center order-2">
             <button
-              className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-white/85 px-3.5 py-1.5 text-sm shadow-sm transition"
+              className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-white/85 px-4 py-2 text-sm md:text-base shadow-sm transition"
               onClick={() => {
                 if (weekIndex > 0) setWeekIndex(weekIndex - 1)
                 else { // ir para a última semana do mês anterior (0..4)
@@ -387,7 +394,7 @@ export default function Reservas() {
               }}
             >← Semana</button>
             <button
-              className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-white/85 px-3.5 py-1.5 text-sm shadow-sm transition"
+              className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-white/85 px-4 py-2 text-sm md:text-base shadow-sm transition"
               onClick={() => {
                 const today = new Date()
                 const monthRef = new Date(today.getFullYear(), today.getMonth(), 1)
@@ -399,7 +406,7 @@ export default function Reservas() {
               }}
             >Hoje</button>
             <button
-              className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-white/85 px-3.5 py-1.5 text-sm shadow-sm transition"
+              className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-white/85 px-4 py-2 text-sm md:text-base shadow-sm transition"
               onClick={() => {
                 if (weekIndex < 4) setWeekIndex(weekIndex + 1)
                 else { // ir para a primeira semana do próximo mês
@@ -412,7 +419,7 @@ export default function Reservas() {
           </div>
           <div className="flex items-center gap-2 justify-stretch md:justify-end order-3">
             <button
-              className="af-btn w-full md:w-auto text-center"
+              className="af-btn w-full md:w-auto text-center px-4 py-2 text-sm md:text-base"
               onClick={(e) => {
                 const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect()
                 setPickerAnchor({ top: rect.top + window.scrollY, left: rect.left + window.scrollX, height: rect.height })
@@ -454,7 +461,7 @@ export default function Reservas() {
           </div>
         </div>
       </div>
-      <div className="af-section af-card-elev shadow-sm backdrop-blur overflow-visible min-w-0 ring-1 ring-white/10 bg-[rgba(7,12,20,0.55)]">
+      <div className="af-section af-card-elev shadow-sm backdrop-blur overflow-hidden min-w-0 ring-1 ring-white/10 bg-[rgba(7,12,20,0.55)]">
         <div className="mb-3 af-subtitle">Reservas do dia
           <span className="ml-2 af-chip text-white/70">{format(parseYYYYMMDD(selectedDay), 'dd/MM/yy', { locale: ptBR })}</span>
         </div>
@@ -495,7 +502,7 @@ export default function Reservas() {
             {filtered.map((r, idx) => (
               <li key={r.id}>
                 <div
-                  className={`af-list-card af-list-card-info cursor-pointer overflow-visible ${
+                  className={`relative af-list-card af-list-card-info cursor-pointer overflow-hidden ${expandedId === r.id ? 'z-50' : ''} ${
                     (() => { const s = effectiveStatus(r); return s === 'finalizada' ? 'border-t-2 border-blue-300/70' : s === 'confirmada' ? 'border-t-2 border-blue-400/60' : s === 'expirada' ? 'border-t-2 border-white/30' : s === 'cancelada' ? 'border-t-2 border-red-400/60' : 'border-t-2 border-white/20' })()
                   } ${selectionMode && selectedIds.has(String(r.id)) ? 'af-selected af-glow ring-2 ring-blue-400/50' : ''}`}
                   onClick={() => {
@@ -549,7 +556,18 @@ export default function Reservas() {
                                   : 'bg-white/10 text-white/90 ring-1 ring-white/20'
                           return (
                             <button
-                              onClick={(e) => { e.stopPropagation(); setExpandedId(expandedId === r.id ? null : r.id) }}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                const next = expandedId === r.id ? null : r.id
+                                setExpandedId(next)
+                                if (next) {
+                                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                                  // alinhado à direita do chip
+                                  setStatusMenuPos({ id: r.id, top: rect.bottom + window.scrollY + 8, left: rect.right + window.scrollX - 176 })
+                                } else {
+                                  setStatusMenuPos(null)
+                                }
+                              }}
                               className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[12px] ${chipCls}`}
                             >
                               <span className="inline-block h-2 w-2 rounded-full bg-current/80" />
@@ -557,22 +575,23 @@ export default function Reservas() {
                             </button>
                           )
                         })()}
-                        {expandedId === r.id && (
-                          <div className="absolute right-0 z-50 mt-2 w-44 rounded-md af-card-elev p-1 shadow-xl">
-                            <button onClick={(e) => { e.stopPropagation(); setStatus(r.id, 'confirmada'); setExpandedId(null) }} className="w-full text-left af-btn-ghost px-2 py-1.5 text-sm">Confirmar</button>
-                            <button onClick={(e) => { e.stopPropagation(); updateReserva.mutate({ id: r.id, payload: { status: 'finalizada' } as any }); setExpandedId(null) }} className="w-full text-left af-btn-ghost px-2 py-1.5 text-sm">Finalizar</button>
-                            <button onClick={(e) => { e.stopPropagation(); updateReserva.mutate({ id: r.id, payload: { status: 'expirada' } as any }); setExpandedId(null) }} className="w-full text-left af-btn-ghost px-2 py-1.5 text-sm">Expirar</button>
-                            <button onClick={(e) => { e.stopPropagation(); setStatus(r.id, 'cancelada'); setExpandedId(null) }} className="w-full text-left af-btn-ghost px-2 py-1.5 text-sm">Cancelar</button>
-                          </div>
-                        )}
+                        {expandedId === r.id && statusMenuPos?.id === r.id && createPortal(
+                          <div className="fixed z-[9999] w-44 rounded-md af-card-elev p-1 shadow-2xl" data-status-menu
+                               style={{ top: statusMenuPos?.top ?? 0, left: statusMenuPos?.left ?? 0 }}>
+                            <button onClick={(e) => { e.stopPropagation(); setStatus(r.id, 'confirmada'); setExpandedId(null); setStatusMenuPos(null) }} className="w-full text-left af-btn-ghost px-2 py-1.5 text-sm">Confirmar</button>
+                            <button onClick={(e) => { e.stopPropagation(); updateReserva.mutate({ id: r.id, payload: { status: 'finalizada' } as any }); setExpandedId(null); setStatusMenuPos(null) }} className="w-full text-left af-btn-ghost px-2 py-1.5 text-sm">Finalizar</button>
+                            <button onClick={(e) => { e.stopPropagation(); updateReserva.mutate({ id: r.id, payload: { status: 'expirada' } as any }); setExpandedId(null); setStatusMenuPos(null) }} className="w-full text-left af-btn-ghost px-2 py-1.5 text-sm">Expirar</button>
+                            <button onClick={(e) => { e.stopPropagation(); setStatus(r.id, 'cancelada'); setExpandedId(null); setStatusMenuPos(null) }} className="w-full text-left af-btn-ghost px-2 py-1.5 text-sm">Cancelar</button>
+                          </div>, document.body)
+                        }
                       </div>
                       {/* Indicador de pagamento (bolinha verde quando pago) */}
                       <span className="inline-flex items-center gap-1" title={r.status_pagamento ? 'Pago' : 'Pagamento pendente'}>
                         <span className={`inline-block h-2.5 w-2.5 rounded-full ${r.status_pagamento ? 'bg-green-400' : 'bg-white/30'}`} />
                       </span>
                       {/* Editar / Excluir sempre visíveis */}
-                      <button onClick={(e) => { e.stopPropagation(); openEdit(r) }} className="af-btn-ghost text-xs">Editar</button>
-                      <button onClick={(e) => { e.stopPropagation(); if (confirm('Tem certeza que deseja excluir esta reserva?')) deleteReserva.mutate(r.id) }} className="af-btn-ghost text-xs">Excluir</button>
+                      <button onClick={(e) => { e.stopPropagation(); openEdit(r) }} className="af-btn-ghost rounded-full px-3 py-1.5 text-sm">Editar</button>
+                      <button onClick={(e) => { e.stopPropagation(); if (confirm('Tem certeza que deseja excluir esta reserva?')) deleteReserva.mutate(r.id) }} className="af-btn-ghost rounded-full px-3 py-1.5 text-sm">Excluir</button>
                     </div>
                   </div>
                 </div>

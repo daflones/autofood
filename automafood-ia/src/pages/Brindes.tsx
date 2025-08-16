@@ -1,19 +1,22 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { format } from 'date-fns'
 import { useQrcodes, useClientes } from '../hooks/useRestaurantData'
-import { useCreateQrcode, useUpdateQrcode, useDeleteQrcode } from '../hooks/useRestaurantData'
+import { useCreateQrcode, useUpdateQrcode, useDeleteQrcode, useUpdateQrcodeExact } from '../hooks/useRestaurantData'
 
 export default function Brindes() {
   const { data: qrcodes, isLoading, error } = useQrcodes()
   const { data: clientes } = useClientes()
   const createQrcode = useCreateQrcode()
   const updateQrcode = useUpdateQrcode()
+  const updateQrcodeExact = useUpdateQrcodeExact()
   const deleteQrcode = useDeleteQrcode()
 
   const [open, setOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingCreatedAt, setEditingCreatedAt] = useState<string | null>(null)
   const [form, setForm] = useState<{
-    status: 'Resgatado' | 'Pendente' | 'Vencido'
+    status: 'Resgatado' | 'Pendente' | 'Vencido' | 'Expirado'
     tipo_brinde: string
     cliente_id: string
   }>({ status: 'Pendente', tipo_brinde: '', cliente_id: '' })
@@ -23,9 +26,48 @@ export default function Brindes() {
   const [selectionMode, setSelectionMode] = useState(false)
   const longPressTimer = useRef<number | null>(null)
   const suppressNextTapIdRef = useRef<string | null>(null)
+  const [statusMenuId, setStatusMenuId] = useState<string | null>(null)
+  const statusAnchorRef = useRef<HTMLButtonElement | null>(null)
+  const [statusMenuPos, setStatusMenuPos] = useState<{ top: number, left: number } | null>(null)
+  const [flashId, setFlashId] = useState<string | null>(null)
 
-  const toggleSelect = (id: string | number, checked: boolean) => {
-    const key = String(id)
+  const formatLocalYMD = (ymd: string) => {
+    if (!ymd) return ''
+    const [y, m, d] = ymd.split('-').map(Number)
+    const dt = new Date(y, (m || 1) - 1, d || 1)
+    return format(dt, 'dd/MM/yyyy')
+  }
+  const getLocalTodayYMD = () => {
+    const d = new Date()
+    const tz = d.getTimezoneOffset() * 60000
+    return new Date(Date.now() - tz).toISOString().slice(0, 10)
+  }
+
+  // Fechar o menu ao clicar fora ou apertar Esc
+  useEffect(() => {
+    if (!statusMenuId) return
+    const onDown = (e: MouseEvent | TouchEvent) => {
+      // Se clicou no botão âncora, ignore (o próprio handler alterna)
+      const target = e.target as Node | null
+      if (statusAnchorRef.current && target && statusAnchorRef.current.contains(target)) return
+      setStatusMenuId(null)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setStatusMenuId(null)
+    }
+    // Use bubble phase so inner menu can stopPropagation
+    window.addEventListener('mousedown', onDown)
+    window.addEventListener('touchstart', onDown)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('mousedown', onDown)
+      window.removeEventListener('touchstart', onDown)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [statusMenuId])
+
+  const toggleSelect = (rowKey: string, checked: boolean) => {
+    const key = rowKey
     setSelected((prev) => {
       const next = new Set(prev)
       if (checked) next.add(key)
@@ -48,13 +90,13 @@ export default function Brindes() {
   const enableSelection = () => setSelectionMode(true)
   const disableSelection = () => { setSelectionMode(false); clearSelection() }
 
-  const onCardTouchStart = (id: string | number) => {
+  const onCardTouchStart = (rowKey: string) => {
     if (longPressTimer.current) window.clearTimeout(longPressTimer.current)
     longPressTimer.current = window.setTimeout(() => {
       setSelectionMode(true)
-      toggleSelect(id, true)
+      toggleSelect(rowKey, true)
       // Prevent the immediate synthetic click after long-press from toggling back
-      suppressNextTapIdRef.current = String(id)
+      suppressNextTapIdRef.current = rowKey
     }, 2000)
   }
   const onCardTouchEnd = () => {
@@ -69,24 +111,45 @@ export default function Brindes() {
     setForm({ status: 'Pendente', tipo_brinde: '', cliente_id: '' })
     setOpen(true)
   }
+  const openEdit = (q: any) => {
+    setEditingId(String(q.id))
+    setEditingCreatedAt(q.created_at || null)
+    setForm({ status: (q.status as any) || 'Pendente', tipo_brinde: q.tipo_brinde || '', cliente_id: q.cliente_id || '' })
+    setOpen(true)
+  }
   // Edit flow removido a pedido: sem botão/ação de editar.
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Ensure data_resgate coherence when saving via form
-    const localToday = (() => {
-      const d = new Date()
-      const tz = d.getTimezoneOffset() * 60000
-      return new Date(Date.now() - tz).toISOString().slice(0, 10)
-    })()
-    if (!form.cliente_id || !form.tipo_brinde) return
-    const payload = {
-      cliente_id: form.cliente_id,
-      tipo_brinde: form.tipo_brinde,
-      status: form.status,
-      data_resgate: form.status === 'Resgatado' ? localToday : null,
+    if (editingId) {
+      // Em edição: permitir atualizar status, cliente_id e tipo_brinde
+      const payload: any = { status: form.status, cliente_id: form.cliente_id, tipo_brinde: form.tipo_brinde }
+      if (form.status === 'Resgatado') payload.data_resgate = getLocalTodayYMD()
+      else payload.data_resgate = null
+      if (editingCreatedAt) await updateQrcodeExact.mutateAsync({ id: editingId, created_at: editingCreatedAt, payload })
+      else await updateQrcode.mutateAsync({ id: editingId, payload })
+    } else {
+      // Criação: validar e enviar todos os campos necessários
+      if (!form.cliente_id || !form.tipo_brinde) return
+      const localToday = (() => {
+        const d = new Date()
+        const tz = d.getTimezoneOffset() * 60000
+        return new Date(Date.now() - tz).toISOString().slice(0, 10)
+      })()
+      const localValidUntil = (() => {
+        const d = new Date()
+        d.setDate(d.getDate() + 30)
+        const tz = d.getTimezoneOffset() * 60000
+        return new Date(d.getTime() - tz).toISOString().slice(0, 10)
+      })()
+      const payload = {
+        cliente_id: form.cliente_id,
+        tipo_brinde: form.tipo_brinde,
+        status: form.status,
+        data_resgate: form.status === 'Resgatado' ? localToday : null,
+        data_validade: localValidUntil,
+      }
+      await createQrcode.mutateAsync(payload as any)
     }
-    if (editingId) await updateQrcode.mutateAsync({ id: editingId, payload })
-    else await createQrcode.mutateAsync(payload as any)
     setOpen(false)
   }
   const countResgatado = useMemo(() => (qrcodes ?? []).filter((q: any) => q.status === 'Resgatado').length, [qrcodes])
@@ -107,7 +170,7 @@ export default function Brindes() {
   return (
     <div className="space-y-8 lg:space-y-10 min-w-0 overflow-x-hidden">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl md:text-3xl xl:text-4xl font-semibold bg-clip-text text-transparent af-grad">Brindes</h1>
+        <h1 className="af-section-title">Brindes</h1>
         <div className="flex items-center gap-2 flex-wrap min-w-0 self-start sm:self-auto">
           {/* Desktop actions */}
           <button
@@ -143,19 +206,24 @@ export default function Brindes() {
         </div>
       </div>
       <div className="af-section af-card-elev overflow-hidden min-w-0 ring-1 ring-white/10 bg-[rgba(7,12,20,0.55)]">
-        <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="af-subtitle">Lista de brindes
-            <span className="ml-2 af-badge text-[11px] text-white/90"><span className="af-badge-dot"/> Resgatados: {countResgatado} • Pendentes: {countPendente} • Vencidos: {countVencido}</span>
+        <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-white flex items-center gap-4 flex-wrap">
+            <span className="text-2xl md:text-3xl font-semibold">Lista de brindes</span>
+            <div className="inline-flex items-center gap-2 flex-wrap">
+              <span className="af-chip text-xs md:text-sm">Resgatados: <b className="ml-1">{countResgatado}</b></span>
+              <span className="af-chip text-xs md:text-sm">Pendentes: <b className="ml-1">{countPendente}</b></span>
+              <span className="af-chip text-xs md:text-sm">Vencidos: <b className="ml-1">{countVencido}</b></span>
+            </div>
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <input
               placeholder="Buscar por nome/telefone do cliente"
-              className="af-field placeholder:text-white/40 w-full"
+              className="af-field placeholder:text-white/40 w-full text-sm md:text-base"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
             <select
-              className="af-field w-full sm:w-auto"
+              className="af-field w-full sm:w-auto text-sm md:text-base"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as any)}
             >
@@ -170,95 +238,143 @@ export default function Brindes() {
         {error && <div className="af-alert">Erro ao carregar brindes</div>}
         {!isLoading && !error && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtered.map((q) => {
+            {filtered.map((q, idx) => {
+              const rowKey = `${q.id}-${q.created_at ?? idx}`
               const status: 'Resgatado' | 'Pendente' | 'Vencido' = (q as any).status || 'Pendente'
               const cliente = (clientes ?? []).find((c: any) => c.id === (q as any).cliente_id)
               return (
                 <div
-                  key={q.id}
-                  className={`af-list-card af-list-card-info p-4 ${
+                  key={rowKey}
+                  className={`af-list-card af-list-card-info p-6 overflow-hidden rounded-xl ${
                     status === 'Resgatado'
                       ? 'border-t-2 border-blue-400/60'
                       : status === 'Vencido'
                         ? 'border-t-2 border-red-400/60'
                         : 'border-t-2 border-white/20'
-                  } ${selectionMode && selected.has(String(q.id)) ? 'af-selected af-glow ring-2 ring-blue-400/50' : ''}`}
-                  onTouchStart={() => onCardTouchStart(q.id)}
+                  } ${selectionMode && selected.has(rowKey) ? 'af-selected af-glow ring-2 ring-blue-400/50' : ''} ${flashId === rowKey ? 'af-glow ring-2 ring-blue-400/50' : ''}`}
+                  onTouchStart={() => onCardTouchStart(rowKey)}
                   onTouchEnd={onCardTouchEnd}
                   onTouchCancel={onCardTouchEnd}
                   onClick={() => {
                     // Ignore only the synthetic tap for the same card that was long-pressed
-                    if (suppressNextTapIdRef.current === String(q.id)) {
+                    if (suppressNextTapIdRef.current === rowKey) {
                       suppressNextTapIdRef.current = null
                       return
                     }
                     if (selectionMode) {
-                      const key = String(q.id)
-                      toggleSelect(key, !selected.has(key))
+                      toggleSelect(rowKey, !selected.has(rowKey))
                     }
                   }}
                 >
                   {/* Header */}
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex items-start gap-3">
                       {selectionMode && (
                         <input
                           type="checkbox"
                           className="mt-1 hidden sm:block h-4 w-4 rounded border-white/30 bg-transparent"
-                          checked={selected.has(String(q.id))}
-                          onChange={(e) => toggleSelect(q.id, e.target.checked)}
+                          checked={selected.has(rowKey)}
+                          onChange={(e) => toggleSelect(rowKey, e.target.checked)}
                         />
                       )}
-                      <div className="title truncate">{q.tipo_brinde || 'Brinde'}</div>
+                      <div className="title truncate text-base md:text-lg font-semibold">{q.tipo_brinde || 'Brinde'}</div>
                     </div>
-                    <span className="af-badge text-[11px] shrink-0"><span className="af-badge-dot"/> {status}</span>
+                    <span className="af-badge text-xs md:text-sm shrink-0"><span className="af-badge-dot"/> {status}</span>
                   </div>
 
                   {/* Details */}
-                  <div className="mt-3 space-y-1">
+                  <div className="mt-3 space-y-1.5 min-w-0">
                     {cliente && (
-                      <div className="text-xs text-white/85 truncate"><span className="font-medium">Cliente:</span> {cliente.nome || '—'}{cliente.telefone && <span className="ml-2">• {cliente.telefone}</span>}</div>
+                      <>
+                        <div className="text-sm md:text-[13px] text-white/90 min-w-0 flex items-center gap-2">
+                          <span className="font-medium shrink-0">Cliente:</span>
+                          <span className="truncate" title={cliente.nome || ''}>{cliente.nome || '—'}</span>
+                        </div>
+                        <div className="text-sm md:text-[13px] text-white/80 min-w-0 flex items-center gap-2">
+                          <span className="font-medium shrink-0">Telefone:</span>
+                          <span className="truncate" title={cliente.telefone || ''}>{cliente.telefone || '—'}</span>
+                        </div>
+                      </>
                     )}
                     {status === 'Resgatado' && q.data_resgate && (
-                      <div className="text-xs text-white/80">Resgatado em: {format(new Date(q.data_resgate), 'dd/MM/yyyy')}</div>
+                      <div className="text-sm md:text-base text-white/80">Resgatado em: {formatLocalYMD(q.data_resgate as any)}</div>
                     )}
                     {q.expires_at && (
-                      <div className="text-xs text-white/70">Expira em: {format(new Date(q.expires_at), 'dd/MM/yyyy')}</div>
+                      <div className="text-sm md:text-base text-white/70">Expira em: {format(new Date(q.expires_at), 'dd/MM/yyyy')}</div>
                     )}
                     {q.campaign && (
-                      <div className="text-xs text-white/70 truncate">Campanha: {q.campaign}</div>
+                      <div className="text-sm md:text-base text-white/70 truncate">Campanha: {q.campaign}</div>
                     )}
                   </div>
 
                   {/* Actions */}
-                  <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-2 relative">
                     <div className="flex items-center gap-2">
+                      {/* Único botão: mostra o status atual e abre menu */}
                       <button
-                        onClick={() => {
-                          const d = new Date()
-                          const tz = d.getTimezoneOffset() * 60000
-                          const today = new Date(Date.now() - tz).toISOString().slice(0, 10)
-                          updateQrcode.mutate({ id: q.id, payload: { status: 'Resgatado', data_resgate: today } })
+                        ref={(el) => { if (el) statusAnchorRef.current = el }}
+                        onClick={(e) => {
+                          const id = rowKey
+                          setStatusMenuId((prev) => (prev === id ? null : id))
+                          const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect()
+                          // Menu size approximations (w-56 => 224px wide, ~132px tall for 3 items + padding)
+                          const approxMenuWidth = 224
+                          const approxMenuHeight = 132
+                          const gap = 8
+                          const viewH = window.innerHeight
+                          const viewW = window.innerWidth
+                          // Prefer below; flip up if it would overflow
+                          const desiredTop = rect.bottom + gap
+                          const flipTop = rect.top - approxMenuHeight - gap
+                          const top = desiredTop + approxMenuHeight > viewH ? Math.max(8, flipTop) : desiredTop
+                          // Keep menu inside viewport horizontally
+                          const left = Math.min(Math.max(8, rect.left), Math.max(8, viewW - approxMenuWidth - 8))
+                          setStatusMenuPos({ top, left })
                         }}
-                        className="af-btn-ghost px-3 py-1.5 text-xs"
+                        className="af-btn-ghost px-4 py-2 text-sm md:text-base"
+                        title="Alterar status"
                       >
-                        Resgatado
+                        {q.status || 'Pendente'}
                       </button>
-                      <button
-                        onClick={() => updateQrcode.mutate({ id: q.id, payload: { status: 'Pendente', data_resgate: null } })}
-                        className="af-btn-ghost px-3 py-1.5 text-xs"
-                      >
-                        Pendente
-                      </button>
-                      <button
-                        onClick={() => updateQrcode.mutate({ id: q.id, payload: { status: 'Vencido', data_resgate: null } })}
-                        className="af-btn-ghost px-3 py-1.5 text-xs"
-                      >
-                        Vencido
-                      </button>
+                      {statusMenuId === rowKey && statusMenuPos && createPortal(
+                        <div
+                          className="fixed z-[9999] af-card p-2 rounded-md shadow-lg ring-1 ring-white/10 w-56"
+                          style={{ top: statusMenuPos.top, left: statusMenuPos.left }}
+                          onMouseDownCapture={(e) => e.stopPropagation()}
+                          onTouchStartCapture={(e) => e.stopPropagation()}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onTouchStart={(e) => e.stopPropagation()}
+                          onClick={(e) => e.stopPropagation()}
+                          role="menu"
+                          aria-label="Alterar status do brinde"
+                        >
+                          <button
+                            className="w-full text-left af-btn-ghost px-3 py-2 text-sm md:text-base"
+                            onClick={() => {
+                              updateQrcodeExact.mutate({ id: q.id, created_at: q.created_at!, payload: { status: 'Resgatado', data_resgate: getLocalTodayYMD() } })
+                              setStatusMenuId(null)
+                              setFlashId(rowKey)
+                              window.setTimeout(() => setFlashId(null), 800)
+                            }}
+                          >Resgatado</button>
+                          <button
+                            className="w-full text-left af-btn-ghost px-3 py-2 text-sm md:text-base"
+                            onClick={() => { updateQrcodeExact.mutate({ id: q.id, created_at: q.created_at!, payload: { status: 'Pendente', data_resgate: null } }); setStatusMenuId(null); setFlashId(rowKey); window.setTimeout(() => setFlashId(null), 800) }}
+                          >Pendente</button>
+                          <button
+                            className="w-full text-left af-btn-ghost px-3 py-2 text-sm md:text-base"
+                            onClick={() => { updateQrcodeExact.mutate({ id: q.id, created_at: q.created_at!, payload: { status: 'Vencido', data_resgate: null } }); setStatusMenuId(null); setFlashId(rowKey); window.setTimeout(() => setFlashId(null), 800) }}
+                          >Vencido</button>
+                          <button
+                            className="w-full text-left af-btn-ghost px-3 py-2 text-sm md:text-base"
+                            onClick={() => { updateQrcodeExact.mutate({ id: q.id, created_at: q.created_at!, payload: { status: 'Expirado', data_resgate: null } }); setStatusMenuId(null); setFlashId(rowKey); window.setTimeout(() => setFlashId(null), 800) }}
+                          >Expirado</button>
+                        </div>, document.body
+                      )}
                     </div>
                     <div className="flex items-center gap-2 ml-auto">
-                      <button onClick={() => { if (confirm('Excluir este brinde?')) deleteQrcode.mutate(q.id) }} className="af-btn-ghost px-3 py-1.5 text-xs">Excluir</button>
+                      <button onClick={() => openEdit(q)} className="af-btn-ghost px-4 py-2 text-sm md:text-base">Editar</button>
+                      <button onClick={() => { if (confirm('Excluir este brinde?')) deleteQrcode.mutate(q.id) }} className="af-btn-ghost px-4 py-2 text-sm md:text-base">Excluir</button>
                     </div>
                   </div>
                 </div>
@@ -293,6 +409,7 @@ export default function Brindes() {
                   <option className="af-card" value="Pendente">Pendente</option>
                   <option className="af-card" value="Resgatado">Resgatado</option>
                   <option className="af-card" value="Vencido">Vencido</option>
+                  <option className="af-card" value="Expirado">Expirado</option>
                 </select>
               </div>
               <div className="flex items-center justify-end gap-2 pt-2">

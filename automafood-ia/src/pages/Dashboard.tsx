@@ -62,7 +62,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 lg:space-y-8">
-      <h1 className="text-2xl md:text-3xl xl:text-4xl font-semibold bg-clip-text text-transparent af-grad">Dashboard</h1>
+      <h1 className="af-section-title">Dashboard</h1>
 
       {/* Top KPIs - 4 cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-12 gap-4 lg:gap-6">

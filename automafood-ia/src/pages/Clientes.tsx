@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useClientes, useCreateCliente, useDeleteCliente, useUpdateCliente } from '../hooks/useRestaurantData'
+import { useClientes, useCreateCliente, useDeleteCliente, useUpdateCliente, useQrcodes, useReservas } from '../hooks/useRestaurantData'
 
 export default function Clientes() {
   const { data: clientes, isLoading, error } = useClientes()
+  const { data: qrcodes } = useQrcodes()
+  const { data: reservas } = useReservas()
   const createCliente = useCreateCliente()
   const deleteCliente = useDeleteCliente()
   const updateCliente = useUpdateCliente()
@@ -20,6 +22,31 @@ export default function Clientes() {
     inativo: 'Inativo',
   }
   const [form, setForm] = useState<{ nome: string; telefone: string; total_brindes?: number; total_reservas?: number; lead_status?: LeadStatus }>({ nome: '', telefone: '', total_brindes: 0, total_reservas: 0, lead_status: 'novo_lead' })
+  // Modal state for viewing Brindes/Reservas of a cliente
+  const [modalCliente, setModalCliente] = useState<any | null>(null)
+  const [modalType, setModalType] = useState<'brindes' | 'reservas' | null>(null)
+
+  // Derivar quantidade de brindes por cliente a partir de qrcodes.cliente_id
+  const brindesPorCliente = useMemo(() => {
+    const map: Record<string, number> = {}
+    for (const q of (qrcodes ?? [])) {
+      const k = String((q as any)?.cliente_id ?? '')
+      if (!k) continue
+      map[k] = (map[k] ?? 0) + 1
+    }
+    return map
+  }, [qrcodes])
+
+  // Derivar quantidade de reservas por cliente a partir de reservas.cliente_id
+  const reservasPorCliente = useMemo(() => {
+    const map: Record<string, number> = {}
+    for (const r of (reservas ?? [])) {
+      const k = String((r as any)?.cliente_id ?? '')
+      if (!k) continue
+      map[k] = (map[k] ?? 0) + 1
+    }
+    return map
+  }, [reservas])
 
   const onCreate = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -52,7 +79,11 @@ export default function Clientes() {
   }
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const payload = { ...form }
+    const payload: any = {
+      nome: form.nome,
+      telefone: form.telefone,
+      lead_status: form.lead_status,
+    }
     if (editingId) {
       await updateCliente.mutateAsync({ id: editingId, payload })
     }
@@ -176,12 +207,12 @@ export default function Clientes() {
         return 'novo_lead'
       }
       const matchesStatus = status === 'todos' || normOldToNew(c.lead_status) === status
-      const reservas = typeof c.total_reservas === 'number' ? c.total_reservas : 0
-      const brindes = typeof c.total_brindes === 'number' ? c.total_brindes : 0
+      const reservas = reservasPorCliente[String(c.id)] ?? 0
+      const brindes = brindesPorCliente[String(c.id)] ?? 0
       const matchesNums = reservas >= minReservas && brindes >= minBrindes
       return matchesText && matchesStatus && matchesNums
     })
-  }, [clientes, q, status, minReservas, minBrindes])
+  }, [clientes, q, status, minReservas, minBrindes, brindesPorCliente, reservasPorCliente])
 
   const shortName = (full: string | null | undefined) => {
     const name = (full ?? '').toString().trim()
@@ -198,8 +229,8 @@ export default function Clientes() {
       const vals = [
         (c.nome ?? '').toString().replaceAll('"', '""'),
         (c.telefone ?? '').toString().replaceAll('"', '""'),
-        (typeof c.total_brindes === 'number' ? c.total_brindes : 0).toString(),
-        (typeof c.total_reservas === 'number' ? c.total_reservas : 0).toString(),
+        ((brindesPorCliente[String(c.id)] ?? 0)).toString(),
+        ((reservasPorCliente[String(c.id)] ?? 0)).toString(),
         (c.lead_status ?? 'novo').toString().replaceAll('"', '""'),
       ].map((v) => '"' + v + '"')
       csv.push(vals.join(','))
@@ -439,7 +470,7 @@ export default function Clientes() {
   return (
     <div className="space-y-6 lg:space-y-8">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl md:text-3xl xl:text-4xl font-semibold bg-clip-text text-transparent af-grad">Clientes</h1>
+        <h1 className="af-section-title">Clientes</h1>
         <div className="flex items-center gap-2">
           <button
             aria-label="Lista"
@@ -650,13 +681,21 @@ export default function Clientes() {
                     </div>
                     <div className="af-list-sep" />
                     <div className="grid grid-cols-2 gap-2.5">
-                      <div className="af-metric-soft ring-1 ring-white/10">
+                      <div
+                        className="af-metric-soft ring-1 ring-white/10 cursor-pointer hover:af-glow"
+                        onClick={() => { setModalCliente(c); setModalType('brindes') }}
+                        title="Ver brindes do cliente"
+                      >
                         <div className="label">Brindes</div>
-                        <div className="value text-[15px]">{c.total_brindes ?? 0}</div>
+                        <div className="value text-[15px]">{brindesPorCliente[String(c.id)] ?? 0}</div>
                       </div>
-                      <div className="af-metric-soft ring-1 ring-white/10">
+                      <div
+                        className="af-metric-soft ring-1 ring-white/10 cursor-pointer hover:af-glow"
+                        onClick={() => { setModalCliente(c); setModalType('reservas') }}
+                        title="Ver reservas do cliente"
+                      >
                         <div className="label">Reservas</div>
-                        <div className="value text-[15px]">{c.total_reservas ?? 0}</div>
+                        <div className="value text-[15px]">{reservasPorCliente[String(c.id)] ?? 0}</div>
                       </div>
                     </div>
                     <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2">
@@ -781,39 +820,106 @@ export default function Clientes() {
                         <button onClick={() => openEdit(c)} className="shrink-0 af-btn-ghost px-2 py-1 lg:px-3 lg:py-1.5 text-[11px] lg:text-[12px]">Editar</button>
                       </div>
                       <div className="mt-2 flex items-center gap-2 text-[11px] lg:text-[12px] flex-wrap">
-                        <span className="af-badge"><span className="af-badge-dot" />Brindes: {c.total_brindes ?? 0}</span>
-                        <span className="af-badge"><span className="af-badge-dot" />Reservas: {c.total_reservas ?? 0}</span>
+                        <span className="af-badge"><span className="af-badge-dot" />Brindes: {brindesPorCliente[String(c.id)] ?? 0}</span>
+                        <span className="af-badge"><span className="af-badge-dot" />Reservas: {reservasPorCliente[String(c.id)] ?? 0}</span>
                       </div>
                     </div>
                   ))}
-                  {(() => {
-                    const shown = visibleKanban[statusCol] ?? 0
-                    const total = grouped[statusCol].length
-                    const remaining = Math.max(0, total - shown)
-                    if (remaining > 0) {
-                      const step = Math.min(5, remaining)
-                      return (
-                        <div className="pt-1 flex justify-center">
-                          <button
-                            type="button"
-                            onClick={() => setVisibleKanban((s) => ({ ...s, [statusCol]: (s[statusCol] ?? 0) + step }))}
-                            className="rounded-md af-card px-3 py-1.5 text-xs lg:text-[13px] text-white hover:af-glow"
-                          >
-                            {`Ver mais ${step}`}
-                          </button>
-                        </div>
-                      )
-                    }
-                    return null
-                  })()}
                   {grouped[statusCol].length === 0 && <div className="rounded-md af-card p-3 text-sm af-text-dim">Sem itens</div>}
                 </div>
+                {(() => {
+                  const shown = visibleKanban[statusCol] ?? 0
+                  const total = grouped[statusCol].length
+                  const remaining = Math.max(0, total - shown)
+                  if (remaining > 0) {
+                    const step = Math.min(5, remaining)
+                    return (
+                      <div className="pt-1 flex justify-center">
+                        <button
+                          type="button"
+                          onClick={() => setVisibleKanban((s) => ({ ...s, [statusCol]: (s[statusCol] ?? 0) + step }))}
+                          className="rounded-md af-card px-3 py-1.5 text-xs lg:text-[13px] text-white hover:af-glow"
+                        >
+                          {`Ver mais ${step}`}
+                        </button>
+                      </div>
+                    )
+                  }
+                  return null
+                })()}
               </div>
             ))}
           </div>
         </div>
       )}
 
+      {modalCliente && modalType && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" role="dialog" aria-modal="true">
+          <div className="w-full max-w-2xl rounded-xl af-card-elev p-5 lg:p-6 shadow-xl ring-1 ring-white/10 relative">
+            <button
+              className="absolute top-3 right-3 af-btn-ghost px-2 py-1 text-sm"
+              aria-label="Fechar"
+              onClick={() => { setModalCliente(null); setModalType(null) }}
+            >
+              ✕
+            </button>
+            <div className="mb-3 text-lg lg:text-xl font-semibold text-white">
+              {modalType === 'brindes' ? `Brindes de ${shortName(modalCliente?.nome)}` : `Reservas de ${shortName(modalCliente?.nome)}`}
+            </div>
+            <div className="af-list-sep mb-3" />
+            {modalType === 'brindes' ? (
+              <div className="space-y-2 max-h-[60vh] overflow-auto pr-1">
+                {(() => {
+                  const items = (qrcodes ?? []).filter((q: any) => String(q?.cliente_id ?? '') === String(modalCliente?.id))
+                  if (items.length === 0) return <div className="af-text-dim">Nenhum brinde encontrado para este cliente.</div>
+                  return items.map((b: any, idx: number) => (
+                    <div key={`${b.id}-${idx}-${b.created_at ?? idx}`} className="rounded-md af-card p-3 ring-1 ring-white/10">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="font-medium text-white text-sm">{b.codigo || b.tipo_brinde || 'Brinde'}</div>
+                        <span className="af-badge text-[11px]"><span className="af-badge-dot" />{b.status || '—'}</span>
+                      </div>
+                      <div className="mt-1 text-xs text-white/80">
+                        <div>Tipo: {b.tipo_brinde || '—'}</div>
+                        <div>
+                          Validade: {(() => {
+                            const status = (b.status ?? '').toString()
+                            if (status === 'Resgatado' && b.data_resgate) return b.data_resgate
+                            return b.data_validade || b.expires_at || '—'
+                          })()}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                })()}
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-[60vh] overflow-auto pr-1">
+                {(() => {
+                  const items = (reservas ?? []).filter((r: any) => String(r?.cliente_id ?? '') === String(modalCliente?.id))
+                  if (items.length === 0) return <div className="af-text-dim">Nenhuma reserva encontrada para este cliente.</div>
+                  return items
+                    .slice()
+                    .sort((a: any, b: any) => String(a.data_reserva || '').localeCompare(String(b.data_reserva || '')) || String(a.hora_reserva || '').localeCompare(String(b.hora_reserva || '')))
+                    .map((r: any, idx: number) => (
+                      <div key={`${r.id}-${idx}-${r.created_at ?? idx}`} className="rounded-md af-card p-3 ring-1 ring-white/10">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="font-medium text-white text-sm">{r.data_reserva || '—'} {r.hora_reserva ? `• ${r.hora_reserva}` : ''}</div>
+                          <span className="af-chip text-[11px]">{r.status || '—'}</span>
+                        </div>
+                        <div className="mt-1 text-xs text-white/80 grid grid-cols-2 gap-x-4 gap-y-1">
+                          <div>Pessoas: {typeof r.n_pessoas === 'number' ? r.n_pessoas : '—'}</div>
+                          <div>Pagamento: {r.status_pagamento ? 'Pago' : 'Pendente'}</div>
+                          <div className="col-span-2">Obs.: {r.observacao || '—'}</div>
+                        </div>
+                      </div>
+                    ))
+                })()}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+ 
       {open && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4">
           <div className="w-full max-w-md rounded-xl af-card-elev p-5 lg:p-6 shadow-xl">
@@ -828,16 +934,7 @@ export default function Clientes() {
                 <label className="mb-1 block af-label">Telefone</label>
                 <input className="af-field" value={form.telefone} onChange={(e) => setForm((f) => ({ ...f, telefone: e.target.value }))} />
               </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <div>
-                  <label className="mb-1 block af-label">Brindes</label>
-                  <input type="number" min={0} className="af-field" value={form.total_brindes} onChange={(e) => setForm((f) => ({ ...f, total_brindes: Number(e.target.value || 0) }))} />
-                </div>
-                <div>
-                  <label className="mb-1 block af-label">Reservas</label>
-                  <input type="number" min={0} className="af-field" value={form.total_reservas} onChange={(e) => setForm((f) => ({ ...f, total_reservas: Number(e.target.value || 0) }))} />
-                </div>
-                <div>
+              <div>
                   <label className="mb-1 block af-label">Lead status</label>
                   <select className="af-field" value={form.lead_status} onChange={(e) => setForm((f) => ({ ...f, lead_status: e.target.value as LeadStatus }))}>
                     <option className="af-card" value="novo_lead">Novo Lead</option>
@@ -845,7 +942,6 @@ export default function Clientes() {
                     <option className="af-card" value="ativo">Ativo</option>
                     <option className="af-card" value="inativo">Inativo</option>
                   </select>
-                </div>
               </div>
               <div className="flex items-center justify-end gap-2 pt-2">
                 <button type="button" onClick={() => setOpen(false)} className="rounded-md af-card px-4 py-2 lg:px-5 lg:py-3 text-sm lg:text-[15px] text-white hover:af-glow">Cancelar</button>
