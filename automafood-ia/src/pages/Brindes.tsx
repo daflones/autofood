@@ -2,7 +2,7 @@ import { useMemo, useRef, useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { format } from 'date-fns'
 import { useQrcodes, useClientes } from '../hooks/useRestaurantData'
-import { useCreateQrcode, useUpdateQrcode, useDeleteQrcode, useUpdateQrcodeExact } from '../hooks/useRestaurantData'
+import { useCreateQrcode, useUpdateQrcode, useUpdateQrcodeExact, useDeleteQrcodeExact } from '../hooks/useRestaurantData'
 
 export default function Brindes() {
   const { data: qrcodes, isLoading, error } = useQrcodes()
@@ -10,7 +10,7 @@ export default function Brindes() {
   const createQrcode = useCreateQrcode()
   const updateQrcode = useUpdateQrcode()
   const updateQrcodeExact = useUpdateQrcodeExact()
-  const deleteQrcode = useDeleteQrcode()
+  const deleteQrcodeExact = useDeleteQrcodeExact()
 
   const [open, setOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -81,8 +81,14 @@ export default function Brindes() {
   const bulkDelete = async () => {
     if (selected.size === 0) return
     if (!confirm(`Excluir ${selected.size} brinde(s)?`)) return
-    const ids = Array.from(selected)
-    await Promise.all(ids.map((id) => deleteQrcode.mutateAsync(id)))
+    const keys = Array.from(selected)
+    await Promise.all(
+      keys.map((key) => {
+        const [id, created_at, cliente_id] = String(key).split('|||')
+        if (id && created_at) return deleteQrcodeExact.mutateAsync({ id, created_at, cliente_id })
+        return Promise.resolve()
+      }),
+    )
     clearSelection()
     setSelectionMode(false)
   }
@@ -239,7 +245,7 @@ export default function Brindes() {
         {!isLoading && !error && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map((q, idx) => {
-              const rowKey = `${q.id}-${q.created_at ?? idx}`
+              const rowKey = `${q.id}|||${q.created_at ?? idx}|||${(q as any).cliente_id ?? ''}`
               const status: 'Resgatado' | 'Pendente' | 'Vencido' = (q as any).status || 'Pendente'
               const cliente = (clientes ?? []).find((c: any) => c.id === (q as any).cliente_id)
               return (
@@ -374,7 +380,7 @@ export default function Brindes() {
                     </div>
                     <div className="flex items-center gap-2 ml-auto">
                       <button onClick={() => openEdit(q)} className="af-btn-ghost px-4 py-2 text-sm md:text-base">Editar</button>
-                      <button onClick={() => { if (confirm('Excluir este brinde?')) deleteQrcode.mutate(q.id) }} className="af-btn-ghost px-4 py-2 text-sm md:text-base">Excluir</button>
+                      <button onClick={() => { if (confirm('Excluir este brinde?')) deleteQrcodeExact.mutate({ id: q.id, created_at: q.created_at!, cliente_id: (q as any).cliente_id }) }} className="af-btn-ghost px-4 py-2 text-sm md:text-base">Excluir</button>
                     </div>
                   </div>
                 </div>

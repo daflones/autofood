@@ -15,6 +15,7 @@ import {
   createQrcode,
   updateQrcode,
   deleteQrcode,
+  deleteQrcodeExact,
   type Reserva,
   type Cliente,
   type Qrcode,
@@ -142,6 +143,15 @@ export function useDeleteQrcode() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => deleteQrcode(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.qrcodes }),
+  })
+}
+
+export function useDeleteQrcodeExact() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, created_at, cliente_id }: { id: string; created_at: string; cliente_id?: string }) =>
+      deleteQrcodeExact(id, created_at, cliente_id),
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.qrcodes }),
   })
 }

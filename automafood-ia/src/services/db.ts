@@ -312,6 +312,21 @@ export async function deleteQrcode(id: string) {
   return guardedDelete('qrcodes', id, rid)
 }
 
+// Precise delete: match exactly one brinde row by (id + restaurante_id + created_at [+ cliente_id])
+export async function deleteQrcodeExact(id: string, created_at: string, cliente_id?: string) {
+  const rid = await getRestauranteId()
+  let query = supabase
+    .from('qrcodes')
+    .delete()
+    .eq('id', id)
+    .eq('restaurante_id', rid)
+    .eq('created_at', created_at)
+  if (cliente_id) query = query.eq('cliente_id', cliente_id)
+  const { error } = await query
+  if (error) throw error
+  return true
+}
+
 // Compatibility shim: callers may still provide (id + created_at). We map it to (id + tipo_brinde)
 export async function updateQrcodeExact(
   id: string,
