@@ -9,11 +9,13 @@ import Register from './pages/auth/Register'
 import ForgotPassword from './pages/auth/ForgotPassword'
 import ResetPassword from './pages/auth/ResetPassword'
 import Layout from './layout/Layout'
+import InstallPrompt from './components/InstallPrompt'
 import ProtectedRoute from './routes/ProtectedRoute'
 
 function App() {
   return (
     <BrowserRouter>
+      <InstallPrompt />
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
