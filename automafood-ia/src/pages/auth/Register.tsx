@@ -66,15 +66,15 @@ export default function Register() {
 
   return (
     <div className="relative grid min-h-screen place-items-center overflow-hidden p-4">
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[#0b1220] via-[#0b1220] to-black" />
-      <div className="pointer-events-none absolute -top-32 -left-32 h-80 w-80 rounded-full bg-[#1f2a40]/30 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-32 -right-20 h-80 w-80 rounded-full bg-[#0f1621]/40 blur-3xl" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white via-gray-50 to-gray-100" />
+      <div className="pointer-events-none absolute -top-32 -left-32 h-80 w-80 rounded-full bg-sky-100/60 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-32 -right-20 h-80 w-80 rounded-full bg-indigo-100/60 blur-3xl" />
       <div className="relative w-full max-w-sm af-card-elev p-6 af-shadow-soft af-glow overflow-hidden min-w-0">
         <h1 className="mb-2 text-center text-3xl font-extrabold tracking-tight bg-clip-text text-transparent af-grad">Criar conta</h1>
         <p className="mb-6 text-center text-sm af-text-dim">Comece a usar o AutoFood</p>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm text-white">Nome do restaurante</label>
+            <label className="mb-1 block af-label">Nome do restaurante</label>
             <input
               className="af-field"
               {...register('nome')}
@@ -82,34 +82,34 @@ export default function Register() {
             {errors.nome && <p className="mt-1 af-help">{errors.nome.message}</p>}
           </div>
           <div>
-            <label className="mb-1 block text-sm text-white">Email</label>
+            <label className="mb-1 block af-label">Email</label>
             <input
               type="email"
-              className="af-field placeholder:text-white/40"
+              className="af-field placeholder:text-slate-400"
               {...register('email')}
             />
             {errors.email && <p className="mt-1 af-help">{errors.email.message}</p>}
           </div>
           <div>
-            <label className="mb-1 block text-sm text-white">Senha</label>
+            <label className="mb-1 block af-label">Senha</label>
             <input
               type="password"
-              className="af-field placeholder:text-white/40"
+              className="af-field placeholder:text-slate-400"
               {...register('password')}
             />
             {errors.password && <p className="mt-1 af-help">{errors.password.message}</p>}
           </div>
           <div>
-            <label className="mb-1 block text-sm text-white">Telefone</label>
+            <label className="mb-1 block af-label">Telefone</label>
             <input
-              className="af-field placeholder:text-white/40"
+              className="af-field placeholder:text-slate-400"
               {...register('telefone')}
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm text-white">Endereço</label>
+            <label className="mb-1 block af-label">Endereço</label>
             <input
-              className="af-field placeholder:text-white/40"
+              className="af-field placeholder:text-slate-400"
               {...register('endereco')}
             />
           </div>

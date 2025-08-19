@@ -26,8 +26,9 @@ body { background: var(--af-bg); color: var(--af-text); }
 .af-card-elev { background: color-mix(in oklab, var(--af-elev) 92%, black 0%); border: 1px solid var(--af-border); }
 .af-border { border-color: var(--af-border) !important; }
 .af-border-strong { border-color: var(--af-border-strong) !important; }
-.af-chip { background: color-mix(in oklab, var(--af-elev) 88%, black 0%); border: 1px solid var(--af-border); color: var(--af-white); }
-.af-chip-red { background: #3a0f12; border: 1px solid #7f1d1d; color: #fecaca; }
+/* Legacy chip definitions updated to light theme to avoid conflicts with index.css */
+.af-chip { background: #eef2ff; border: 1px solid #c7d2fe; color: #3730a3; }
+.af-chip-red { background: #fee2e2; border: 1px solid #fecaca; color: #991b1b; }
 .af-text { color: var(--af-white) !important; }
 .af-muted { color: rgba(255,255,255,0.7) !important; }
 .af-inverse { color: var(--af-text-inverse) !important; }

@@ -14,7 +14,7 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
     <>
       {/* Mobile overlay */}
       <div
-        className={`fixed inset-0 z-30 bg-black/60 backdrop-blur-sm transition-opacity lg:hidden ${open ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
+        className={`fixed inset-0 z-30 bg-white/70 backdrop-blur-sm transition-opacity lg:hidden ${open ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
         onClick={onClose}
       />
 
@@ -34,7 +34,7 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
           </div>
           <button
             onClick={onClose}
-            className="absolute top-0 right-0 rounded-md p-2 text-white hover:bg-[#0f1621] lg:hidden"
+            className="absolute top-0 right-0 rounded-md p-2 lg:hidden hover:bg-gray-100"
             aria-label="Close menu"
           >
             <X className="h-5 w-5" />
@@ -53,15 +53,15 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
               {({ isActive }) => (
                 <>
                   <div className={`af-menu-indicator absolute left-0 ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`} />
-                  <Icon className="h-5 w-5 text-white/80 group-hover:text-white" />
-                  <span className="group-hover:text-white">{label}</span>
+                  <Icon className="h-5 w-5 text-[color:var(--af-text-dim)] group-hover:text-[color:var(--af-text)]" />
+                  <span className="group-hover:text-[color:var(--af-text)] text-[color:var(--af-text-dim)]">{label}</span>
                 </>
               )}
             </NavLink>
           ))}
         </nav>
 
-        <div className="mt-auto border-t af-divider pt-3 text-xs text-white/70">
+        <div className="mt-auto border-t af-divider pt-3 text-xs text-[color:var(--af-text-muted)]">
           © {new Date().getFullYear()} AutoFood
         </div>
       </aside>

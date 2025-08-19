@@ -211,9 +211,9 @@ export default function Brindes() {
           )}
         </div>
       </div>
-      <div className="af-section af-card-elev overflow-hidden min-w-0 ring-1 ring-white/10 bg-[rgba(7,12,20,0.55)]">
+      <div className="af-section af-card-elev overflow-hidden min-w-0">
         <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="text-white flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-4 flex-wrap">
             <span className="text-2xl md:text-3xl font-semibold">Lista de brindes</span>
             <div className="inline-flex items-center gap-2 flex-wrap">
               <span className="af-chip text-xs md:text-sm">Resgatados: <b className="ml-1">{countResgatado}</b></span>
@@ -224,7 +224,7 @@ export default function Brindes() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <input
               placeholder="Buscar por nome/telefone do cliente"
-              className="af-field placeholder:text-white/40 w-full text-sm md:text-base"
+              className="af-field placeholder:text-slate-400 w-full text-sm md:text-base"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -278,7 +278,7 @@ export default function Brindes() {
                       {selectionMode && (
                         <input
                           type="checkbox"
-                          className="mt-1 hidden sm:block h-4 w-4 rounded border-white/30 bg-transparent"
+                          className="mt-1 hidden sm:block h-4 w-4 rounded border-slate-300 bg-white"
                           checked={selected.has(rowKey)}
                           onChange={(e) => toggleSelect(rowKey, e.target.checked)}
                         />
@@ -292,24 +292,24 @@ export default function Brindes() {
                   <div className="mt-3 space-y-1.5 min-w-0">
                     {cliente && (
                       <>
-                        <div className="text-sm md:text-[13px] text-white/90 min-w-0 flex items-center gap-2">
+                        <div className="text-sm md:text-[13px] min-w-0 flex items-center gap-2">
                           <span className="font-medium shrink-0">Cliente:</span>
                           <span className="truncate" title={cliente.nome || ''}>{cliente.nome || '—'}</span>
                         </div>
-                        <div className="text-sm md:text-[13px] text-white/80 min-w-0 flex items-center gap-2">
+                        <div className="text-sm md:text-[13px] af-text-dim min-w-0 flex items-center gap-2">
                           <span className="font-medium shrink-0">Telefone:</span>
                           <span className="truncate" title={cliente.telefone || ''}>{cliente.telefone || '—'}</span>
                         </div>
                       </>
                     )}
                     {status === 'Resgatado' && q.data_resgate && (
-                      <div className="text-sm md:text-base text-white/80">Resgatado em: {formatLocalYMD(q.data_resgate as any)}</div>
+                      <div className="text-sm md:text-base af-text-dim">Resgatado em: {formatLocalYMD(q.data_resgate as any)}</div>
                     )}
                     {q.expires_at && (
-                      <div className="text-sm md:text-base text-white/70">Expira em: {format(new Date(q.expires_at), 'dd/MM/yyyy')}</div>
+                      <div className="text-sm md:text-base af-text-dim">Expira em: {format(new Date(q.expires_at), 'dd/MM/yyyy')}</div>
                     )}
                     {q.campaign && (
-                      <div className="text-sm md:text-base text-white/70 truncate">Campanha: {q.campaign}</div>
+                      <div className="text-sm md:text-base af-text-dim truncate">Campanha: {q.campaign}</div>
                     )}
                   </div>
 
@@ -391,24 +391,24 @@ export default function Brindes() {
         )}
       </div>
 
-      {open && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4">
-          <div className="w-full max-w-md af-card-elev p-5 overflow-hidden min-w-0">
-            <div className="mb-3 text-lg font-semibold text-white">{editingId ? 'Editar brinde' : 'Novo brinde'}</div>
-            <form onSubmit={onSubmit} className="space-y-3">
-              <div>
-                <label className="mb-1 block af-label">Tipo do brinde</label>
-                <input className="af-field" value={form.tipo_brinde} onChange={(e) => setForm((f) => ({ ...f, tipo_brinde: e.target.value }))} placeholder="Ex.: Desconto, Bebida, Sobremesa" required />
-              </div>
-              <div>
-                <label className="mb-1 block af-label">Cliente</label>
-                <select className="af-field" value={form.cliente_id} onChange={(e) => setForm((f) => ({ ...f, cliente_id: e.target.value }))} required>
-                  <option className="af-card" value="">Sem cliente</option>
-                  {(clientes ?? []).map((c: any) => (
-                    <option className="af-card" key={c.id} value={c.id}>{c.nome || 'Sem nome'} {c.telefone ? `• ${c.telefone}` : ''}</option>
-                  ))}
-                </select>
-              </div>
+        {open && (
+          <div className="fixed inset-0 z-50 grid place-items-center bg-white/90 p-4">
+            <div className="w-full max-w-md p-5 overflow-hidden min-w-0 rounded-md shadow-md ring-1 ring-slate-200">
+              <div className="mb-3 text-lg font-semibold">{editingId ? 'Editar brinde' : 'Novo brinde'}</div>
+              <form onSubmit={onSubmit} className="space-y-3">
+                <div>
+                  <label className="mb-1 block af-label">Tipo do brinde</label>
+                  <input className="af-field" value={form.tipo_brinde} onChange={(e) => setForm((f) => ({ ...f, tipo_brinde: e.target.value }))} placeholder="Ex.: Desconto, Bebida, Sobremesa" required />
+                </div>
+                <div>
+                  <label className="mb-1 block af-label">Cliente</label>
+                  <select className="af-field" value={form.cliente_id} onChange={(e) => setForm((f) => ({ ...f, cliente_id: e.target.value }))} required>
+                    <option className="af-card" value="">Sem cliente</option>
+                    {(clientes ?? []).map((c: any) => (
+                      <option className="af-card" key={c.id} value={c.id}>{c.nome || 'Sem nome'} {c.telefone ? `• ${c.telefone}` : ''}</option>
+                    ))}
+                  </select>
+                </div>
               <div>
                 <label className="mb-1 block af-label">Status</label>
                 <select className="af-field" value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as any }))}>
@@ -419,7 +419,7 @@ export default function Brindes() {
                 </select>
               </div>
               <div className="flex items-center justify-end gap-2 pt-2">
-                <button type="button" onClick={() => setOpen(false)} className="rounded-md af-card px-4 py-2 text-sm text-white hover:af-glow">Cancelar</button>
+                <button type="button" onClick={() => setOpen(false)} className="rounded-md af-card px-4 py-2 text-sm text-[var(--af-text)] hover:af-glow">Cancelar</button>
                 <button type="submit" className="af-btn-primary w-auto">Salvar</button>
               </div>
             </form>

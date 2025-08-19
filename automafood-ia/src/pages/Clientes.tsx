@@ -476,7 +476,7 @@ export default function Clientes() {
             aria-label="Lista"
             title="Lista"
             onClick={() => setView('lista')}
-            className={`rounded-md ${view==='lista' ? 'af-card' : 'af-card'} p-2 text-white hover:af-glow`}
+            className={`rounded-md ${view==='lista' ? 'af-card' : 'af-card'} p-2 hover:af-glow`}
           >
             {/* List icon */}
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -489,7 +489,7 @@ export default function Clientes() {
             aria-label="Kanban"
             title="Kanban"
             onClick={() => setView('kanban')}
-            className={`rounded-md ${view==='kanban' ? 'af-card' : 'af-card'} p-2 text-white hover:af-glow`}
+            className={`rounded-md ${view==='kanban' ? 'af-card' : 'af-card'} p-2 hover:af-glow`}
           >
             {/* Kanban icon */}
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -502,31 +502,31 @@ export default function Clientes() {
       </div>
       {view === 'lista' ? (
         <div>
-          <div className="af-section af-card-elev shadow-sm backdrop-blur overflow-hidden min-w-0 ring-1 ring-white/10 bg-[rgba(7,12,20,0.55)]">
+          <div className="af-section af-card-elev shadow-sm overflow-hidden min-w-0">
             <form onSubmit={onCreate} className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <input
                 placeholder="Nome"
-                className="af-field placeholder:text-white/40"
+                className="af-field placeholder:text-slate-400"
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
               />
               <input
                 placeholder="Telefone"
-                className="af-field placeholder:text-white/40"
+                className="af-field placeholder:text-slate-400"
                 value={telefone}
                 onChange={(e) => setTelefone(e.target.value)}
               />
               <button
                 type="submit"
                 disabled={createCliente.isPending}
-                className="af-btn-primary px-3 py-2 text-xs sm:text-sm disabled:opacity-60"
+                className="af-btn-primary disabled:opacity-60"
               >
                 {createCliente.isPending ? 'Adicionando…' : 'Adicionar'}
               </button>
             </form>
           </div>
 
-          <div className="af-section af-card-elev shadow-sm backdrop-blur overflow-hidden min-w-0">
+          <div className="af-section af-card-elev shadow-sm overflow-hidden min-w-0">
             <div className="mb-3 flex items-center justify-between gap-2">
               <div className="af-subtitle">Lista de Clientes</div>
               <div className="flex items-center gap-2">
@@ -558,7 +558,7 @@ export default function Clientes() {
             <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
               <input
                 placeholder="Buscar por nome ou telefone"
-                className="af-field placeholder:text-white/40"
+                className="af-field placeholder:text-slate-400"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
               />
@@ -599,8 +599,8 @@ export default function Clientes() {
               </select>
             </div>
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <div className="text-xs text-white/80">{filteredClientes.length} cliente(s) encontrados</div>
-              <button onClick={exportCSV} className="rounded-md af-card px-4 py-2 text-sm lg:text-[15px] text-white hover:af-glow">Exportar CSV</button>
+              <div className="text-xs af-text-dim">{filteredClientes.length} cliente(s) encontrados</div>
+              <button onClick={exportCSV} className="rounded-md af-card px-4 py-2 text-sm lg:text-[15px] hover:af-glow">Exportar CSV</button>
             </div>
             {isLoading && <div className="af-text-dim">Carregando…</div>}
             {error && <div className="af-alert">Erro ao carregar clientes</div>}
@@ -642,7 +642,7 @@ export default function Clientes() {
                             onChange={(e) => toggleSelectId(String(c.id), e.target.checked)}
                           />
                         )}
-                        <div className="h-11 w-11 rounded-full bg-[#0b1422] grid place-items-center text-white text-[12px] font-semibold shrink-0 shadow-inner">
+                        <div className="h-11 w-11 rounded-full bg-blue-50 grid place-items-center text-blue-700 text-[12px] font-semibold shrink-0 shadow-inner">
                           {(() => {
                             const name = (c.nome ?? 'Cliente').toString().trim()
                             const ini = name.split(/\s+/).map((p: string) => p[0]).slice(0,2).join('').toUpperCase()
@@ -651,7 +651,7 @@ export default function Clientes() {
                         </div>
                         <div className="min-w-0">
                           <div className="truncate title text-[16px] leading-5">{shortName(c.nome)}</div>
-                          <div className="subtle text-xs text-white/85 break-words" style={{ marginTop: '0.35rem' }}>
+                          <div className="subtle text-xs af-text-dim break-words" style={{ marginTop: '0.35rem' }}>
                             <span className="inline-flex items-center gap-1.5 align-top">
                               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="opacity-80">
                                 <path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2a1 1 0 011.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 011 1V21a1 1 0 01-1 1C10.85 22 2 13.15 2 2a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.46.57 3.58a1 1 0 01-.24 1.01l-2.2 2.2z" fill="currentColor"/>
@@ -717,7 +717,7 @@ export default function Clientes() {
                 <button
                   type="button"
                   onClick={() => setVisibleCount((n) => n + Math.min(10, Math.max(0, filteredClientes.length - n)))}
-                  className="rounded-md af-card px-4 py-2 text-sm lg:text-[15px] text-white hover:af-glow"
+                  className="rounded-md af-card px-4 py-2 text-sm lg:text-[15px] hover:af-glow"
                 >
                   {(() => {
                     const remaining = Math.max(0, filteredClientes.length - visibleCount)
@@ -730,9 +730,9 @@ export default function Clientes() {
           </div>
         </div>
       ) : (
-        <div className="rounded-xl af-card-elev p-4 lg:p-5 xl:p-6 shadow-sm backdrop-blur overflow-hidden min-w-0 ring-1 ring-white/10 bg-[rgba(7,12,20,0.55)]">
+        <div className="rounded-xl af-card-elev p-4 lg:p-5 xl:p-6 shadow-sm overflow-hidden min-w-0">
           <div className="mb-3 flex items-center justify-between">
-            <div className="text-sm font-medium text-white">Kanban por lead status</div>
+            <div className="text-sm font-medium">Kanban por lead status</div>
             <div className="flex items-center gap-2">
               {/* Desktop: toggle selection mode */}
               <button
@@ -757,7 +757,7 @@ export default function Clientes() {
                   <button onClick={bulkDeleteSelected} className="af-btn-ghost px-3 py-1.5 text-xs">Excluir Selecionados</button>
                 </div>
               )}
-              <div className="text-xs text-white/80">
+              <div className="text-xs af-text-dim">
                 Novo Lead: {grouped.novo_lead.length} • Interessado: {grouped.interessado.length} • Ativo: {grouped.ativo.length} • Inativo: {grouped.inativo.length}
               </div>
             </div>
@@ -772,7 +772,7 @@ export default function Clientes() {
                 className={`min-h-[240px] af-kanban-col overflow-hidden min-w-[260px] md:min-w-0 af-snap-start ${touchOverStatus === statusCol ? 'ring-1 ring-blue-400/60' : ''}`}
               >
                 <div className="af-kanban-col-header flex items-center justify-between">
-                  <div className="text-sm lg:text-[15px] font-semibold text-white tracking-tight">
+                  <div className="text-sm lg:text-[15px] font-semibold tracking-tight">
                     {statusLabel[statusCol]}
                   </div>
                   <span className="af-badge"><span className="af-badge-dot" />{grouped[statusCol].length}</span>
@@ -798,14 +798,14 @@ export default function Clientes() {
                           toggleSelectId(key, !selectedIds.has(key))
                         }
                       }}
-                      className={`af-kanban-card overflow-hidden bg-[rgba(15,22,36,0.88)] ring-1 ring-white/15 shadow-xl ${
+                      className={`af-kanban-card overflow-hidden bg-white ring-1 ring-slate-200/70 shadow-sm ${
                         statusCol === 'ativo'
-                          ? 'border-t-2 border-blue-400/60'
+                          ? 'border-t-2 border-blue-300'
                           : statusCol === 'inativo'
-                            ? 'border-t-2 border-red-400/60'
+                            ? 'border-t-2 border-rose-300'
                             : statusCol === 'interessado'
-                              ? 'border-t-2 border-white/30'
-                              : 'border-t-2 border-white/20'
+                              ? 'border-t-2 border-indigo-300'
+                              : 'border-t-2 border-slate-200'
                       } ${
                         selectionMode && selectedIds.has(String(c.id))
                           ? 'ring-2 ring-blue-400/50 af-glow shadow-2xl translate-y-[-1px] relative z-[1]'
@@ -815,7 +815,7 @@ export default function Clientes() {
                       <div className="af-card-head flex items-center justify-between gap-3">
                         <div className="min-w-0">
                           <div className="truncate title text-[15px] leading-5">{shortName(c.nome)}</div>
-                          <div className="subtle text-xs text-white/80 break-words" style={{ marginTop: '0.4rem' }}>{c.telefone || '—'}</div>
+                          <div className="subtle text-xs af-text-dim break-words" style={{ marginTop: '0.4rem' }}>{c.telefone || '—'}</div>
                         </div>
                         <button onClick={() => openEdit(c)} className="shrink-0 af-btn-ghost px-2 py-1 lg:px-3 lg:py-1.5 text-[11px] lg:text-[12px]">Editar</button>
                       </div>
@@ -838,7 +838,7 @@ export default function Clientes() {
                         <button
                           type="button"
                           onClick={() => setVisibleKanban((s) => ({ ...s, [statusCol]: (s[statusCol] ?? 0) + step }))}
-                          className="rounded-md af-card px-3 py-1.5 text-xs lg:text-[13px] text-white hover:af-glow"
+                          className="rounded-md af-card px-3 py-1.5 text-xs lg:text-[13px] hover:af-glow"
                         >
                           {`Ver mais ${step}`}
                         </button>
@@ -854,7 +854,7 @@ export default function Clientes() {
       )}
 
       {modalCliente && modalType && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" role="dialog" aria-modal="true">
+        <div className="fixed inset-0 z-50 grid place-items-center bg-white/70 p-4" role="dialog" aria-modal="true">
           <div className="w-full max-w-2xl rounded-xl af-card-elev p-5 lg:p-6 shadow-xl ring-1 ring-white/10 relative">
             <button
               className="absolute top-3 right-3 af-btn-ghost px-2 py-1 text-sm"
@@ -863,7 +863,7 @@ export default function Clientes() {
             >
               ✕
             </button>
-            <div className="mb-3 text-lg lg:text-xl font-semibold text-white">
+            <div className="mb-3 text-lg lg:text-xl font-semibold">
               {modalType === 'brindes' ? `Brindes de ${shortName(modalCliente?.nome)}` : `Reservas de ${shortName(modalCliente?.nome)}`}
             </div>
             <div className="af-list-sep mb-3" />
@@ -872,24 +872,28 @@ export default function Clientes() {
                 {(() => {
                   const items = (qrcodes ?? []).filter((q: any) => String(q?.cliente_id ?? '') === String(modalCliente?.id))
                   if (items.length === 0) return <div className="af-text-dim">Nenhum brinde encontrado para este cliente.</div>
-                  return items.map((b: any, idx: number) => (
-                    <div key={`${b.id}-${idx}-${b.created_at ?? idx}`} className="rounded-md af-card p-3 ring-1 ring-white/10">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="font-medium text-white text-sm">{b.codigo || b.tipo_brinde || 'Brinde'}</div>
-                        <span className="af-badge text-[11px]"><span className="af-badge-dot" />{b.status || '—'}</span>
-                      </div>
-                      <div className="mt-1 text-xs text-white/80">
-                        <div>Tipo: {b.tipo_brinde || '—'}</div>
-                        <div>
-                          Validade: {(() => {
-                            const status = (b.status ?? '').toString()
-                            if (status === 'Resgatado' && b.data_resgate) return b.data_resgate
-                            return b.data_validade || b.expires_at || '—'
-                          })()}
+                  return (
+                    <>
+                      {items.map((b: any, idx: number) => (
+                        <div key={`${b.id}-${idx}-${b.created_at ?? idx}`} className="rounded-md af-card p-3 ring-1 ring-slate-200/70">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="font-medium text-sm">{b.codigo || b.tipo_brinde || 'Brinde'}</div>
+                            <span className="af-badge text-[11px]"><span className="af-badge-dot" />{b.status || '—'}</span>
+                          </div>
+                          <div className="mt-1 text-xs af-text-dim">
+                            <div>Tipo: {b.tipo_brinde || '—'}</div>
+                            <div>
+                              Validade: {(() => {
+                                const status = (b.status ?? '').toString()
+                                if (status === 'Resgatado' && b.data_resgate) return b.data_resgate
+                                return b.data_validade || b.expires_at || '—'
+                              })()}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  ))
+                      ))}
+                    </>
+                  )
                 })()}
               </div>
             ) : (
@@ -897,22 +901,26 @@ export default function Clientes() {
                 {(() => {
                   const items = (reservas ?? []).filter((r: any) => String(r?.cliente_id ?? '') === String(modalCliente?.id))
                   if (items.length === 0) return <div className="af-text-dim">Nenhuma reserva encontrada para este cliente.</div>
-                  return items
+                  const sorted = items
                     .slice()
                     .sort((a: any, b: any) => String(a.data_reserva || '').localeCompare(String(b.data_reserva || '')) || String(a.hora_reserva || '').localeCompare(String(b.hora_reserva || '')))
-                    .map((r: any, idx: number) => (
-                      <div key={`${r.id}-${idx}-${r.created_at ?? idx}`} className="rounded-md af-card p-3 ring-1 ring-white/10">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="font-medium text-white text-sm">{r.data_reserva || '—'} {r.hora_reserva ? `• ${r.hora_reserva}` : ''}</div>
-                          <span className="af-chip text-[11px]">{r.status || '—'}</span>
+                  return (
+                    <>
+                      {sorted.map((r: any, idx: number) => (
+                        <div key={`${r.id}-${idx}-${r.created_at ?? idx}`} className="rounded-md af-card p-3 ring-1 ring-slate-200/70">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="font-medium text-sm">{r.data_reserva || '—'} {r.hora_reserva ? `• ${r.hora_reserva}` : ''}</div>
+                            <span className="af-chip text-[11px]">{r.status || '—'}</span>
+                          </div>
+                          <div className="mt-1 text-xs af-text-dim grid grid-cols-2 gap-x-4 gap-y-1">
+                            <div>Pessoas: {typeof r.n_pessoas === 'number' ? r.n_pessoas : '—'}</div>
+                            <div>Pagamento: {r.status_pagamento ? 'Pago' : 'Pendente'}</div>
+                            <div className="col-span-2">Obs.: {r.observacao || '—'}</div>
+                          </div>
                         </div>
-                        <div className="mt-1 text-xs text-white/80 grid grid-cols-2 gap-x-4 gap-y-1">
-                          <div>Pessoas: {typeof r.n_pessoas === 'number' ? r.n_pessoas : '—'}</div>
-                          <div>Pagamento: {r.status_pagamento ? 'Pago' : 'Pendente'}</div>
-                          <div className="col-span-2">Obs.: {r.observacao || '—'}</div>
-                        </div>
-                      </div>
-                    ))
+                      ))}
+                    </>
+                  )
                 })()}
               </div>
             )}
@@ -921,9 +929,9 @@ export default function Clientes() {
       )}
  
       {open && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4">
+        <div className="fixed inset-0 z-50 grid place-items-center bg-white/70 p-4">
           <div className="w-full max-w-md rounded-xl af-card-elev p-5 lg:p-6 shadow-xl">
-            <div className="mb-3 text-lg lg:text-xl font-semibold text-white">Editar cliente</div>
+            <div className="mb-3 text-lg lg:text-xl font-semibold">Editar cliente</div>
             <form onSubmit={onSubmit} className="space-y-3 lg:space-y-4">
               <div>
                 <label className="mb-1 block af-label">Nome</label>
@@ -944,7 +952,7 @@ export default function Clientes() {
                   </select>
               </div>
               <div className="flex items-center justify-end gap-2 pt-2">
-                <button type="button" onClick={() => setOpen(false)} className="rounded-md af-card px-4 py-2 lg:px-5 lg:py-3 text-sm lg:text-[15px] text-white hover:af-glow">Cancelar</button>
+                <button type="button" onClick={() => setOpen(false)} className="rounded-md af-card px-4 py-2 lg:px-5 lg:py-3 text-sm lg:text-[15px] hover:af-glow">Cancelar</button>
                 <button type="submit" className="af-btn-primary">Salvar</button>
               </div>
             </form>

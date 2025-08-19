@@ -55,8 +55,8 @@ export default function Configuracoes() {
     <div className="space-y-6 lg:space-y-8">
       <h1 className="af-section-title">Configurações</h1>
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 lg:gap-6">
-        <div className="xl:col-span-7 af-section af-card-elev shadow-sm backdrop-blur overflow-hidden min-w-0">
-          <div className="mb-3 text-sm lg:text-[15px] font-medium text-white">Dados do restaurante</div>
+        <div className="xl:col-span-7 af-section af-card-elev shadow-sm overflow-hidden min-w-0">
+          <div className="mb-3 text-sm lg:text-[15px] font-medium text-[var(--af-text)]">Dados do restaurante</div>
           {isLoading && <div className="af-text-dim">Carregando…</div>}
           {error && <div className="af-alert">Erro ao carregar dados</div>}
           {!isLoading && !error && (
@@ -129,7 +129,7 @@ export default function Configuracoes() {
                   <input
                     id="autoConfirm"
                     type="checkbox"
-                    className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-blue-600"
+                    className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-600"
                     checked={autoConfirm}
                     onChange={(e) => setAutoConfirm(e.target.checked)}
                   />
@@ -155,8 +155,8 @@ export default function Configuracoes() {
             </form>
           )}
         </div>
-        <div className="xl:col-span-5 af-section af-card-elev shadow-sm backdrop-blur overflow-hidden min-w-0">
-          <div className="mb-2 text-sm lg:text-[15px] font-medium text-white">Preferências visuais</div>
+        <div className="xl:col-span-5 af-section af-card-elev shadow-sm overflow-hidden min-w-0">
+          <div className="mb-2 text-sm lg:text-[15px] font-medium text-[var(--af-text)]">Preferências visuais</div>
           <div className="af-text-dim">Mais opções em breve (tema, chips, layouts). As opções principais foram movidas para o formulário à esquerda.</div>
         </div>
       </div>

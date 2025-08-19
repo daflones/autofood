@@ -31,13 +31,8 @@ export default function Login() {
   }
 
   return (
-    <div className="relative grid min-h-screen place-items-center overflow-hidden p-4 text-white">
-      {/* Background: deep navy to black */}
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[#0b1220] via-[#0b1220] to-black" />
-      {/* Subtle glow accents */}
-      <div className="pointer-events-none absolute -top-32 -left-32 h-80 w-80 rounded-full bg-[#1f2a40]/30 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-32 -right-20 h-80 w-80 rounded-full bg-[#0f1621]/40 blur-3xl" />
-      <div className="relative w-full max-w-sm af-card-elev p-6 af-shadow-soft af-glow overflow-hidden min-w-0">
+    <div className="relative grid min-h-screen place-items-center overflow-hidden p-4 text-[var(--af-text-primary)] bg-white">
+      <div className="relative w-full max-w-sm af-card-elev p-6 af-shadow-soft overflow-hidden min-w-0">
         <h1 className="mb-2 text-center text-3xl font-extrabold tracking-tight bg-clip-text text-transparent af-grad">AutoFood</h1>
         <p className="mb-6 text-center text-sm af-text-dim">Gestão moderna para restaurantes</p>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -45,7 +40,7 @@ export default function Login() {
             <label className="mb-1 block af-label">Email</label>
             <input
               type="email"
-              className="af-field placeholder:text-white/40"
+              className="af-field placeholder:text-[var(--af-text-muted)]"
               {...register('email')}
             />
             {errors.email && <p className="mt-1 af-help">{errors.email.message}</p>}
@@ -54,7 +49,7 @@ export default function Login() {
             <label className="mb-1 block af-label">Senha</label>
             <input
               type="password"
-              className="af-field placeholder:text-white/40"
+              className="af-field placeholder:text-[var(--af-text-muted)]"
               {...register('password')}
             />
             {errors.password && <p className="mt-1 af-help">{errors.password.message}</p>}
@@ -68,13 +63,13 @@ export default function Login() {
           </button>
         </form>
         <div className="mt-3 text-right text-sm">
-          <Link to="/forgot-password" className="text-white/90 hover:underline">
+          <Link to="/forgot-password" className="text-[var(--af-primary)] hover:underline">
             Esqueceu a senha?
           </Link>
         </div>
-        <p className="mt-2 text-center text-sm text-white/80">
+        <p className="mt-2 text-center text-sm af-text-dim">
           Não tem conta?{' '}
-          <Link to="/register" className="hover:underline">
+          <Link to="/register" className="text-[var(--af-primary)] hover:underline">
             Cadastre-se
           </Link>
         </p>

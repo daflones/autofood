@@ -309,7 +309,7 @@ export default function Reservas() {
       {datePickerOpen && (
         <div className="fixed inset-0 z-50">
           {/* Fundo escurecido */}
-          <div className="absolute inset-0 bg-black/60" onClick={() => setDatePickerOpen(false)} />
+          <div className="absolute inset-0 bg-white/70" onClick={() => setDatePickerOpen(false)} />
           {/* Popover ancorado ao botão */}
           <div
             className="absolute z-10 w-[280px] sm:w-[320px] rounded-xl af-card-elev shadow-xl"
@@ -321,16 +321,16 @@ export default function Reservas() {
             <div className="p-3 sm:p-4">
               <div className="mb-3 flex items-center justify-between">
                 <button
-                  className="rounded-md border border-[#1b2535] px-2 py-1 text-xs text-white hover:bg-[#0b0f15]"
+                  className="rounded-md border border-[var(--af-border)] px-2 py-1 text-xs text-[var(--af-text)] hover:bg-gray-100"
                   onClick={() => setPickerMonth(new Date(pickerMonth.getFullYear(), pickerMonth.getMonth() - 1, 1))}
                 >←</button>
-                <div className="text-sm text-white">{format(pickerMonth, 'MMMM yyyy', { locale: ptBR })}</div>
+                <div className="text-sm text-[var(--af-text)]">{format(pickerMonth, 'MMMM yyyy', { locale: ptBR })}</div>
                 <button
-                  className="rounded-md border border-[#1b2535] px-2 py-1 text-xs text-white hover:bg-[#0b0f15]"
+                  className="rounded-md border border-[var(--af-border)] px-2 py-1 text-xs text-[var(--af-text)] hover:bg-gray-100"
                   onClick={() => setPickerMonth(new Date(pickerMonth.getFullYear(), pickerMonth.getMonth() + 1, 1))}
                 >→</button>
               </div>
-              <div className="grid grid-cols-7 gap-1 text-center text-[10px] sm:text-[11px] text-white/60 mb-1">
+              <div className="grid grid-cols-7 gap-1 text-center text-[10px] sm:text-[11px] text-[var(--af-text-dim)] mb-1">
                 {['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map((d) => (<div key={d} className="py-1">{d}</div>))}
               </div>
               {(() => {
@@ -356,7 +356,7 @@ export default function Reservas() {
                           disabled={!inMonth}
                           onClick={() => inMonth && goToDay(d)}
                           className={`p-1.5 sm:p-2 md:p-3 text-center border transition
-                            ${inMonth ? 'bg-[#070a10] text-white border-[#141a22] hover:bg-[#0b0f15]' : 'bg-transparent text-white/40 border-transparent'}
+                            ${inMonth ? 'bg-white text-[var(--af-text)] border-[var(--af-border)] hover:bg-primary-50' : 'bg-transparent text-[var(--af-text-muted)] border-transparent'}
                             ${inMonth && ymd(d) === selectedDay ? 'af-card' : ''}
                           `}
                         >
@@ -383,7 +383,7 @@ export default function Reservas() {
           </div>
           <div className="flex items-center gap-3 justify-between md:justify-center order-2">
             <button
-              className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-white/85 px-4 py-2 text-sm md:text-base shadow-sm transition"
+              className="af-btn-ghost px-4 py-2 text-sm md:text-base"
               onClick={() => {
                 if (weekIndex > 0) setWeekIndex(weekIndex - 1)
                 else { // ir para a última semana do mês anterior (0..4)
@@ -394,19 +394,18 @@ export default function Reservas() {
               }}
             >← Semana</button>
             <button
-              className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-white/85 px-4 py-2 text-sm md:text-base shadow-sm transition"
+              className="af-btn-ghost px-4 py-2 text-sm md:text-base"
               onClick={() => {
                 const today = new Date()
                 const monthRef = new Date(today.getFullYear(), today.getMonth(), 1)
                 setViewMonthDate(monthRef)
                 setWeekIndex(weekIndexFor(today, monthRef))
-                const key = ymd(today)
-                setSelectedDay(key)
-                flashToday(key)
+                setSelectedDay(ymd(today))
+                flashToday(ymd(today))
               }}
             >Hoje</button>
             <button
-              className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-white/85 px-4 py-2 text-sm md:text-base shadow-sm transition"
+              className="af-btn-ghost px-4 py-2 text-sm md:text-base"
               onClick={() => {
                 if (weekIndex < 4) setWeekIndex(weekIndex + 1)
                 else { // ir para a primeira semana do próximo mês
@@ -432,7 +431,7 @@ export default function Reservas() {
 
         {/* Linha única da semana: Dom–Sáb (7 dias, sem scroll em mobile) */}
         <div className="">
-          <div className="rounded-2xl ring-1 ring-white/5 overflow-hidden">
+          <div className="rounded-2xl ring-1 ring-[var(--af-border)] overflow-hidden bg-white">
             <div className="grid grid-cols-7">
               {weekDays.map((d, idx) => {
                 const y = d.getFullYear(); const m = String(d.getMonth() + 1).padStart(2, '0'); const dd = String(d.getDate()).padStart(2, '0')
@@ -445,15 +444,15 @@ export default function Reservas() {
                     key={idx}
                     onClick={() => setSelectedDay(key)}
                     className={`relative p-2 sm:p-3 text-center transition
-                      ${isSelected ? 'bg-[rgba(16,34,62,0.9)]' : 'bg-[rgba(9,16,28,0.85)] hover:bg-[rgba(13,22,38,0.9)]'}
-                      ${idx !== 0 ? 'border-l border-white/5' : ''}
+                      ${isSelected ? 'bg-white' : 'bg-white hover:bg-gray-50'}
+                      ${idx !== 0 ? 'border-l border-[var(--af-border)]' : ''}
                       ${flashDay === key ? 'af-glow' : ''}
                     `}
                   >
-                    <div className={`absolute inset-x-0 top-0 h-1 ${isSelected ? 'bg-gradient-to-r from-[#1f4fbf] to-[#3b82f6]' : 'bg-transparent'}`} />
-                    <div className="text-[10px] sm:text-[12px] text-white/60">{format(d, 'EEE', { locale: ptBR })}</div>
-                    <div className="mt-1 text-base sm:text-lg md:text-xl font-semibold text-white">{d.getDate()}</div>
-                    <div className="mt-1 text-[10px] sm:text-[12px] md:text-[13px] text-white/70">{totalDoDia} reserva{totalDoDia === 1 ? '' : 's'}</div>
+                    <div className={`absolute inset-x-0 top-0 h-1 ${isSelected ? 'bg-gradient-to-r from-primary-500 to-primary-400' : 'bg-transparent'}`} />
+                    <div className="text-[10px] sm:text-[12px] text-[var(--af-text-dim)]">{format(d, 'EEE', { locale: ptBR })}</div>
+                    <div className="mt-1 text-base sm:text-lg md:text-xl font-semibold text-[var(--af-text)]">{d.getDate()}</div>
+                    <div className="mt-1 text-[10px] sm:text-[12px] md:text-[13px] text-[var(--af-text-muted)]">{totalDoDia} reserva{totalDoDia === 1 ? '' : 's'}</div>
                   </button>
                 )
               })}
@@ -461,15 +460,15 @@ export default function Reservas() {
           </div>
         </div>
       </div>
-      <div className="af-section af-card-elev shadow-sm backdrop-blur overflow-hidden min-w-0 ring-1 ring-white/10 bg-[rgba(7,12,20,0.55)]">
+      <div className="af-section af-card-elev shadow-sm overflow-hidden min-w-0">
         <div className="mb-3 af-subtitle">Reservas do dia
-          <span className="ml-2 af-chip text-white/70">{format(parseYYYYMMDD(selectedDay), 'dd/MM/yy', { locale: ptBR })}</span>
+          <span className="ml-2 af-chip text-[var(--af-text-dim)]">{format(parseYYYYMMDD(selectedDay), 'dd/MM/yy', { locale: ptBR })}</span>
         </div>
         {/* Filtros da lista */}
         <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3">
           <input
             placeholder="Buscar por cliente"
-            className="af-field placeholder:text-white/40"
+            className="af-field placeholder:text-[var(--af-text-muted)]"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
@@ -531,11 +530,11 @@ export default function Reservas() {
                         />
                       )}
                       <div className="flex items-center gap-3">
-                        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-700/60 text-[12px] font-semibold text-white">{idx + 1}</span>
+                        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-blue-700 ring-1 ring-blue-200 text-[12px] font-semibold">{idx + 1}</span>
                         <span className="truncate title">{clienteNome(r.cliente_id)}</span>
                       </div>
                       <div className="subtle">{fmtDataHora((r as any).data_reserva, (r as any).hora_reserva)}</div>
-                      <div className="text-[13px] text-white/75 flex flex-wrap gap-3">
+                      <div className="text-[13px] text-[var(--af-text-dim)] flex flex-wrap gap-3">
                         <span>{(r as any).n_pessoas ? `${(r as any).n_pessoas} pessoa(s)` : '—'}</span>
                         {(r as any).observacao && <span className="truncate max-w-full">Obs: {(r as any).observacao}</span>}
                       </div>
@@ -546,14 +545,14 @@ export default function Reservas() {
                         {(() => {
                           const s = effectiveStatus(r)
                           const chipCls = s === 'finalizada'
-                            ? 'bg-blue-500/20 text-blue-200 ring-1 ring-blue-400/30'
+                            ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-200'
                             : s === 'confirmada'
-                              ? 'bg-blue-500/15 text-blue-200 ring-1 ring-blue-400/25'
+                              ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-200'
                               : s === 'expirada'
-                                ? 'bg-white/10 text-white/80 ring-1 ring-white/20'
+                                ? 'bg-gray-50 text-gray-600 ring-1 ring-gray-200'
                                 : s === 'cancelada'
-                                  ? 'bg-red-500/10 text-red-200 ring-1 ring-red-400/25'
-                                  : 'bg-white/10 text-white/90 ring-1 ring-white/20'
+                                  ? 'bg-red-50 text-red-700 ring-1 ring-red-200'
+                                  : 'bg-gray-50 text-gray-700 ring-1 ring-gray-200'
                           return (
                             <button
                               onClick={(e) => {
@@ -597,15 +596,15 @@ export default function Reservas() {
                 </div>
               </li>
             ))}
-            {reservas?.length === 0 && <li className="py-6 text-sm text-white/70">Sem reservas ainda.</li>}
+            {reservas?.length === 0 && <li className="py-6 text-sm text-[var(--af-text-dim)]">Sem reservas ainda.</li>}
           </ul>
         )}
       </div>
 
       {open && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4">
+        <div className="fixed inset-0 z-50 grid place-items-center bg-white/70 p-4">
           <div className="w-full max-w-md rounded-xl af-card-elev p-5 shadow-xl overflow-hidden min-w-0">
-            <div className="mb-3 text-lg font-semibold text-white">{editingId ? 'Editar reserva' : 'Nova reserva'}</div>
+            <div className="mb-3 text-lg font-semibold text-[var(--af-text)]">{editingId ? 'Editar reserva' : 'Nova reserva'}</div>
             <form onSubmit={onSubmit} className="space-y-3">
               <div>
                 <label className="mb-1 block af-label">Cliente</label>

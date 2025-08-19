@@ -9,6 +9,9 @@ commands = [
   "npm run build"
 ]
 
+[start]
+cmd = "npm start"
+
 [variables]
 # Prevent npm from pruning devDependencies in production builds
 NPM_CONFIG_PRODUCTION = "false"

@@ -11,6 +11,7 @@ import ResetPassword from './pages/auth/ResetPassword'
 import Layout from './layout/Layout'
 import InstallPrompt from './components/InstallPrompt'
 import ProtectedRoute from './routes/ProtectedRoute'
+import Marketing from './pages/Marketing'
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/site" element={<Marketing />} />
         <Route
           path="/"
           element={
