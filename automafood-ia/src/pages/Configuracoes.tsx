@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useMyRestaurante, useUpdateMyRestaurante } from '../hooks/useRestaurantData'
+import { Card } from '../components/Card'
+import { Settings, Palette } from 'lucide-react'
 
 export default function Configuracoes() {
   const { data: restaurante, isLoading, error } = useMyRestaurante()
@@ -52,113 +54,141 @@ export default function Configuracoes() {
   }
 
   return (
-    <div className="space-y-6 lg:space-y-8">
-      <h1 className="af-section-title">Configurações</h1>
+    <div className="min-h-screen bg-[#F8F9FE] p-6 lg:p-8">
+      <div className="space-y-6 lg:space-y-8">
+        {/* Header */}
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50">
+            <Settings className="h-6 w-6 text-[#6366F1]" />
+          </div>
+          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Configurações</h1>
+        </div>
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 lg:gap-6">
-        <div className="xl:col-span-7 af-section af-card-elev shadow-sm overflow-hidden min-w-0">
-          <div className="mb-3 text-sm lg:text-[15px] font-medium text-[var(--af-text)]">Dados do restaurante</div>
-          {isLoading && <div className="af-text-dim">Carregando…</div>}
-          {error && <div className="af-alert">Erro ao carregar dados</div>}
-          {!isLoading && !error && (
-            <form onSubmit={onSalvar} className="space-y-3 lg:space-y-4">
-              {formError && (
-                <div className="af-alert">{formError}</div>
-              )}
-              {formSuccess && (
-                <div className="af-alert-soft">{formSuccess}</div>
-              )}
-              <div>
-                <label className="mb-1 block af-label">Nome</label>
-                <input
-                  className="af-field"
-                  value={nome}
-                  onChange={(e) => setNome(e.target.value)}
-                />
+        <div className="xl:col-span-7 min-w-0">
+          <Card
+            title={(
+              <div className="flex items-center gap-2">
+                <Settings className="h-4 w-4 text-[var(--af-blue)]" />
+                <span>Dados do restaurante</span>
               </div>
-              <div>
-                <label className="mb-1 block af-label">Email</label>
-                <input
-                  type="email"
-                  className="af-field"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1 block af-label">Telefone</label>
-                  <input
-                    className="af-field"
-                    value={telefone}
-                    onChange={(e) => setTelefone(e.target.value)}
-                  />
+            )}
+          >
+            {isLoading && <div className="af-text-dim">Carregando…</div>}
+            {error && <div className="af-alert">Erro ao carregar dados</div>}
+            {!isLoading && !error && (
+              <form onSubmit={onSalvar} className="space-y-5">
+                {formError && (
+                  <div className="af-alert">{formError}</div>
+                )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Nome do restaurante</label>
+                    <input
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                      value={nome}
+                      onChange={(e) => setNome(e.target.value)}
+                      placeholder="Nome do seu restaurante"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                    <input
+                      type="email"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="seu@email.com"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Telefone</label>
+                    <input
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                      placeholder="(11) 99999-9999"
+                      value={telefone}
+                      onChange={(e) => setTelefone(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Endereço</label>
+                    <input
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                      value={endereco}
+                      onChange={(e) => setEndereco(e.target.value)}
+                      placeholder="Endereço completo"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Capacidade (lugares)</label>
+                    <input
+                      type="number"
+                      min="1"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                      value={capacity || ''}
+                      onChange={(e) => setCapacity(Number(e.target.value) || 0)}
+                      placeholder="Ex: 50"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Intervalo entre reservas (min)</label>
+                    <input
+                      type="number"
+                      min="5"
+                      step="5"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                      value={reservationInterval || ''}
+                      onChange={(e) => setReservationInterval(Number(e.target.value) || 15)}
+                      placeholder="Ex: 15"
+                    />
+                  </div>
+                  <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
+                    <input
+                      type="checkbox"
+                      id="autoConfirm"
+                      className="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 focus:ring-2"
+                      checked={autoConfirm}
+                      onChange={(e) => setAutoConfirm(e.target.checked)}
+                    />
+                    <label htmlFor="autoConfirm" className="text-sm font-medium text-gray-700">Confirmar reservas automaticamente</label>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">WhatsApp (número para contato)</label>
+                    <input
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                      placeholder="(11) 99999-9999"
+                      value={whatsappNumber}
+                      onChange={(e) => setWhatsappNumber(e.target.value)}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="mb-1 block af-label">Endereço</label>
-                  <input
-                    className="af-field"
-                    value={endereco}
-                    onChange={(e) => setEndereco(e.target.value)}
-                  />
+                <div className="pt-4">
+                  <button
+                    type="submit"
+                    disabled={updateRestaurante.isPending}
+                    className="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-medium py-3 px-6 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {updateRestaurante.isPending ? 'Salvando…' : 'Salvar alterações'}
+                  </button>
                 </div>
-              </div>
-              <div className="pt-2 border-t border-white/10"></div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="mb-1 block af-label">Capacidade (lugares)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    className="af-field"
-                    value={capacity}
-                    onChange={(e) => setCapacity(e.target.value === '' ? '' : Number(e.target.value))}
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block af-label">Intervalo entre reservas (min)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    step={5}
-                    className="af-field"
-                    value={reservationInterval}
-                    onChange={(e) => setReservationInterval(e.target.value === '' ? '' : Number(e.target.value))}
-                  />
-                </div>
-                <div className="sm:col-span-2 flex items-center gap-3">
-                  <input
-                    id="autoConfirm"
-                    type="checkbox"
-                    className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-600"
-                    checked={autoConfirm}
-                    onChange={(e) => setAutoConfirm(e.target.checked)}
-                  />
-                  <label htmlFor="autoConfirm" className="af-label">Confirmar reservas automaticamente</label>
-                </div>
-                <div className="sm:col-span-2">
-                  <label className="mb-1 block af-label">WhatsApp (número para contato)</label>
-                  <input
-                    className="af-field"
-                    placeholder="(xx) 9xxxx-xxxx"
-                    value={whatsappNumber}
-                    onChange={(e) => setWhatsappNumber(e.target.value)}
-                  />
-                </div>
-              </div>
-              <button
-                type="submit"
-                disabled={updateRestaurante.isPending}
-                className="af-btn-primary disabled:opacity-60"
-              >
-                {updateRestaurante.isPending ? 'Salvando…' : 'Salvar alterações'}
-              </button>
-            </form>
-          )}
+              </form>
+            )}
+          </Card>
         </div>
-        <div className="xl:col-span-5 af-section af-card-elev shadow-sm overflow-hidden min-w-0">
-          <div className="mb-2 text-sm lg:text-[15px] font-medium text-[var(--af-text)]">Preferências visuais</div>
-          <div className="af-text-dim">Mais opções em breve (tema, chips, layouts). As opções principais foram movidas para o formulário à esquerda.</div>
+        <div className="xl:col-span-5 min-w-0">
+          <Card
+            title={(
+              <div className="flex items-center gap-2">
+                <Palette className="h-4 w-4 text-[var(--af-purple)]" />
+                <span>Preferências visuais</span>
+              </div>
+            )}
+          >
+            <div className="af-text-dim">Mais opções em breve (tema, chips, layouts). As opções principais foram movidas para o formulário à esquerda.</div>
+          </Card>
         </div>
+      </div>
       </div>
     </div>
   )

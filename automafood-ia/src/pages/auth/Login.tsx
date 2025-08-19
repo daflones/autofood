@@ -31,48 +31,59 @@ export default function Login() {
   }
 
   return (
-    <div className="relative grid min-h-screen place-items-center overflow-hidden p-4 text-[var(--af-text-primary)] bg-white">
-      <div className="relative w-full max-w-sm af-card-elev p-6 af-shadow-soft overflow-hidden min-w-0">
-        <h1 className="mb-2 text-center text-3xl font-extrabold tracking-tight bg-clip-text text-transparent af-grad">AutoFood</h1>
-        <p className="mb-6 text-center text-sm af-text-dim">Gestão moderna para restaurantes</p>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <div className="min-h-screen bg-[#F8F9FE] flex items-center justify-center p-3 sm:p-4 md:p-6">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-100 p-6 sm:p-8">
+        <div className="text-center mb-8">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-50 to-indigo-50 mx-auto mb-4">
+            <svg className="h-8 w-8 text-purple-600" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+            </svg>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">AutoFood</h1>
+          <p className="text-sm text-gray-500">Gestão moderna para restaurantes</p>
+        </div>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <div>
-            <label className="mb-1 block af-label">Email</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
             <input
               type="email"
-              className="af-field placeholder:text-[var(--af-text-muted)]"
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+              placeholder="seu@email.com"
               {...register('email')}
             />
-            {errors.email && <p className="mt-1 af-help">{errors.email.message}</p>}
+            {errors.email && <p className="mt-2 text-sm text-red-600">{errors.email.message}</p>}
           </div>
           <div>
-            <label className="mb-1 block af-label">Senha</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Senha</label>
             <input
               type="password"
-              className="af-field placeholder:text-[var(--af-text-muted)]"
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+              placeholder="••••••••"
               {...register('password')}
             />
-            {errors.password && <p className="mt-1 af-help">{errors.password.message}</p>}
+            {errors.password && <p className="mt-2 text-sm text-red-600">{errors.password.message}</p>}
           </div>
           <button
             type="submit"
             disabled={isSubmitting}
-            className="af-btn-primary"
+            className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-medium py-3 px-4 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
-        <div className="mt-3 text-right text-sm">
-          <Link to="/forgot-password" className="text-[var(--af-primary)] hover:underline">
+        <div className="mt-6 text-center">
+          <Link to="/forgot-password" className="text-sm text-purple-600 hover:text-purple-700 font-medium">
             Esqueceu a senha?
           </Link>
         </div>
-        <p className="mt-2 text-center text-sm af-text-dim">
-          Não tem conta?{' '}
-          <Link to="/register" className="text-[var(--af-primary)] hover:underline">
-            Cadastre-se
-          </Link>
-        </p>
+        <div className="mt-6 pt-6 border-t border-gray-100 text-center">
+          <p className="text-sm text-gray-600">
+            Precisa de uma conta?{' '}
+            <a href="https://wa.me/5511999999999?text=Olá,%20gostaria%20de%20saber%20mais%20sobre%20o%20AutoFood" target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:text-purple-700 font-medium">
+              Fale com um vendedor
+            </a>
+          </p>
+        </div>
       </div>
     </div>
   )

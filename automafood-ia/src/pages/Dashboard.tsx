@@ -1,10 +1,12 @@
 import { useReservas, useClientes, useQrcodes } from '../hooks/useRestaurantData'
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, PieChart, Pie, Cell, Legend } from 'recharts'
+import { ClipboardList, CalendarCheck, Users2, Gift, TrendingUp, BarChart3 } from 'lucide-react'
+import { Card } from '../components/Card'
 
 export default function Dashboard() {
-  const { data: reservas, isLoading: loadingReservas, error: errorReservas } = useReservas()
-  const { data: clientes, isLoading: loadingClientes, error: errorClientes } = useClientes()
-  const { data: qrcodes, isLoading: loadingQrcodes, error: errorQrcodes } = useQrcodes()
+  const { data: reservas } = useReservas()
+  const { data: clientes } = useClientes()
+  const { data: qrcodes } = useQrcodes()
 
   const today = new Date()
   const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate())
@@ -40,13 +42,6 @@ export default function Dashboard() {
   const reservasCanceladas  = reservasSafe.filter((r) => inLast7Days(r) && (norm(r.status) === 'cancelada' || norm(r.status) === 'cancelado' || norm(r.status) === 'canceladas'))
   const reservasExpiradas   = reservasSafe.filter((r) => inLast7Days(r) && (norm(r.status) === 'expirada' || norm(r.status) === 'expirado' || norm(r.status) === 'expiradas'))
   const reservasFinalizadas = reservasSafe.filter((r) => inLast7Days(r) && (norm(r.status) === 'finalizada' || norm(r.status) === 'finalizado' || norm(r.status) === 'finalizadas'))
-  const pieData = [
-    { name: 'Confirmadas', value: reservasConfirmadas.length, color: '#3b82f6' }, // primary blue
-    { name: 'Pendentes',   value: reservasPendentes.length,   color: '#60a5fa' }, // soft blue
-    { name: 'Canceladas',  value: reservasCanceladas.length,  color: '#93c5fd' }, // blue-300
-    { name: 'Expiradas',   value: reservasExpiradas.length,   color: '#67e8f9' }, // cyan-300
-    { name: 'Finalizadas', value: reservasFinalizadas.length, color: '#818cf8' }, // indigo-400
-  ]
   const proximas7dias = reservasSafe
     .filter((r) => {
       const dt = parseDateTime(r)
@@ -78,163 +73,221 @@ export default function Dashboard() {
     return { dia: label, total, confirmadas: cfm, pendentes: pnd, canceladas: cnc, expiradas: exp, finalizadas: fin }
   })
 
-  // kept for backward comp if needed; now we use status breakdown
   const clientesById: Record<string, string> = Object.fromEntries(
     clientesSafe.map((c: any) => [c.id, c.nome ?? 'Cliente'])
   )
 
   return (
-    <div className="space-y-6 lg:space-y-8">
-      <h1 className="af-section-title">Dashboard</h1>
+    <div className="min-h-screen bg-[#F8F9FE] p-3 sm:p-4 md:p-6 lg:p-8">
+      <div className="space-y-4 sm:space-y-6 lg:space-y-8">
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Dashboard</h1>
 
-      {/* Top KPIs - 4 cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-12 gap-4 lg:gap-6">
-        <div className="xl:col-span-3 af-section af-card-elev af-shadow-soft af-glow overflow-hidden min-w-0">
-          <div className="text-sm lg:text-[15px] text-[var(--af-text-dim)]">Total de Reservas</div>
-          <div className="mt-2 text-2xl lg:text-3xl xl:text-4xl font-bold text-[var(--af-text)]">{loadingReservas ? '…' : errorReservas ? '!' : reservasSafe.length}</div>
-        </div>
-
-        <div className="xl:col-span-3 af-section af-card-elev af-shadow-soft af-glow overflow-hidden min-w-0">
-          <div className="mb-2 text-sm lg:text-[15px] font-medium text-[var(--af-text)]">Reservas hoje</div>
-          <div className="mt-2 text-2xl lg:text-3xl xl:text-4xl font-bold text-[var(--af-text)]">{loadingReservas ? '…' : errorReservas ? '!' : reservasHoje.length}</div>
-        </div>
-
-        <div className="xl:col-span-3 af-section af-card-elev af-shadow-soft af-glow overflow-hidden min-w-0">
-          <div className="text-sm lg:text-[15px] text-[var(--af-text-dim)]">Clientes</div>
-          <div className="mt-2 text-2xl lg:text-3xl xl:text-4xl font-bold text-[var(--af-text)]">{loadingClientes ? '…' : errorClientes ? '!' : clientesSafe.length}</div>
-        </div>
-
-        <div className="xl:col-span-3 af-section af-card-elev af-shadow-soft af-glow overflow-hidden min-w-0">
-          <div className="text-sm lg:text-[15px] text-[var(--af-text-dim)]">Brindes (pendentes)</div>
-          <div className="mt-2 text-2xl lg:text-3xl xl:text-4xl font-bold text-[var(--af-text)]">{loadingQrcodes ? '…' : errorQrcodes ? '!' : brindesPendentes}</div>
-        </div>
-      </div>
-
-      {/* Middle row: Area chart + Status/Pie */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 lg:gap-6">
-        <div className="xl:col-span-7 af-section af-border af-card-elev shadow-sm overflow-visible min-w-0">
-          <div className="mb-2 text-sm lg:text-[15px] font-medium text-[var(--af-text)]">Reservas por status (últimos 7 dias)</div>
-          <div className="h-56 md:h-64 xl:h-72 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 10, right: 16, bottom: 0, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="dia" stroke="#6b7280" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
-                <YAxis stroke="#6b7280" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} width={30} />
-                <Tooltip contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e5e7eb', borderRadius: 8 }} labelStyle={{ color: '#111827' }} itemStyle={{ color: '#111827' }} />
-                <Legend wrapperStyle={{ color: '#374151', fontSize: 12 }} />
-                {/* Total em neutro para não competir */}
-                <Line type="monotone" dataKey="total"       name="Total"        stroke="#94a3b8" strokeWidth={2} dot={false} />
-                {/* Status: verde, amarelo, vermelho, laranja, azul */}
-                <Line type="monotone" dataKey="confirmadas" name="Confirmadas"  stroke="#10b981" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="pendentes"   name="Pendentes"    stroke="#f59e0b" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="canceladas"  name="Canceladas"   stroke="#ef4444" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="expiradas"   name="Expiradas"    stroke="#f97316" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="finalizadas" name="Finalizadas"  stroke="#3b82f6" strokeWidth={2} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="xl:col-span-5 af-section af-border af-card-elev af-shadow-soft af-glow overflow-hidden min-w-0 pt-2 pb-2">
-          <div className="mb-2 text-sm lg:text-[15px] font-medium text-[var(--af-text)]">Status (últimos 7 dias)</div>
-          <div className="space-y-4">
-            <div className="grid [grid-template-columns:repeat(auto-fit,minmax(140px,1fr))] gap-4 min-w-0 mb-2 items-stretch">
-              <div className="rounded-md px-4 py-3 lg:px-4 lg:py-3 min-h-[5.8rem] lg:min-h-[6.2rem] w-full flex flex-col items-center justify-center text-center border border-blue-200 bg-blue-50 text-blue-700">
-                <div className="px-2 text-[12px] sm:text-[12px] md:text-[12px] lg:text-[12px] xl:text-[12px] font-medium leading-tight text-center break-words">Confirmadas</div>
-                <div className="mt-0.5 text-xl md:text-2xl lg:text-2xl font-semibold leading-normal">{reservasConfirmadas.length}</div>
+        {/* Top row: KPI tiles */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+          <Card className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl bg-blue-50">
+                <ClipboardList className="h-5 w-5 sm:h-6 sm:w-6 text-[#5D5FEF]" />
               </div>
-              <div className="rounded-md px-4 py-3 lg:px-4 lg:py-3 min-h-[5.8rem] lg:min-h-[6.2rem] w-full flex flex-col items-center justify-center text-center border border-blue-200 bg-blue-50 text-blue-700">
-                <div className="px-2 text-[12px] sm:text-[12px] md:text-[12px] lg:text-[12px] xl:text-[12px] font-medium leading-tight text-center break-words">Pendentes</div>
-                <div className="mt-0.5 text-xl md:text-2xl lg:text-2xl font-semibold leading-normal">{reservasPendentes.length}</div>
-              </div>
-              <div className="rounded-md px-4 py-3 lg:px-4 lg:py-3 min-h-[5.8rem] lg:min-h-[6.2rem] w-full flex flex-col items-center justify-center text-center border border-blue-200 bg-blue-50 text-blue-700">
-                <div className="px-2 text-[12px] sm:text-[12px] md:text-[12px] lg:text-[12px] xl:text-[12px] font-medium leading-tight text-center break-words">Canceladas</div>
-                <div className="mt-0.5 text-xl md:text-2xl lg:text-2xl font-semibold leading-normal">{reservasCanceladas.length}</div>
-              </div>
-              <div className="rounded-md px-4 py-3 lg:px-4 lg:py-3 min-h-[5.8rem] lg:min-h-[6.2rem] w-full flex flex-col items-center justify-center text-center border border-blue-200 bg-blue-50 text-blue-700">
-                <div className="px-2 text-[12px] sm:text-[12px] md:text-[12px] lg:text-[12px] xl:text-[12px] font-medium leading-tight text-center break-words">Expiradas</div>
-                <div className="mt-0.5 text-xl md:text-2xl lg:text-2xl font-semibold leading-normal">{reservasExpiradas.length}</div>
-              </div>
-              <div className="rounded-md px-4 py-3 lg:px-4 lg:py-3 min-h-[5.8rem] lg:min-h-[6.2rem] w-full flex flex-col items-center justify-center text-center border border-blue-200 bg-blue-50 text-blue-700">
-                <div className="px-2 text-[12px] sm:text-[12px] md:text-[12px] lg:text-[12px] xl:text-[12px] font-medium leading-tight text-center break-words">Finalizadas</div>
-                <div className="mt-0.5 text-xl md:text-2xl lg:text-2xl font-semibold leading-normal">{reservasFinalizadas.length}</div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xl sm:text-2xl font-bold text-gray-900">{reservasSafe.length}</div>
+                <div className="text-xs sm:text-sm text-gray-500">Total de Reservas</div>
               </div>
             </div>
-            <div className="mt-1 flex justify-center pb-3">
-              <div className="h-64 md:h-80 xl:h-80 w-full max-w-[520px]">
+          </Card>
+
+          <Card className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl bg-green-50">
+                <CalendarCheck className="h-5 w-5 sm:h-6 sm:w-6 text-[#2ED47A]" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xl sm:text-2xl font-bold text-gray-900">{reservasHoje.length}</div>
+                <div className="text-xs sm:text-sm text-gray-500">Reservas hoje</div>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl bg-purple-50">
+                <Users2 className="h-5 w-5 sm:h-6 sm:w-6 text-[#8C54FF]" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xl sm:text-2xl font-bold text-gray-900">{clientesSafe.length}</div>
+                <div className="text-xs sm:text-sm text-gray-500">Clientes</div>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl bg-orange-50">
+                <Gift className="h-5 w-5 sm:h-6 sm:w-6 text-[#FFB648]" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xl sm:text-2xl font-bold text-gray-900">{brindesPendentes}</div>
+                <div className="text-xs sm:text-sm text-gray-500">Brindes pendentes</div>
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        {/* Charts row */}
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6">
+          <div className="xl:col-span-8">
+            <Card
+              title={(
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-[#5D5FEF]" />
+                  <span>Reservas por status (últimos 7 dias)</span>
+                </div>
+              )}
+            >
+              <div className="h-64 sm:h-80">
                 <ResponsiveContainer width="100%" height="100%">
-                  <PieChart margin={{ top: 8, right: 16, bottom: 24, left: 16 }}>
-                    <Pie
-                      data={pieData}
-                      dataKey="value"
-                      nameKey="name"
-                      innerRadius={42}
-                      outerRadius={70}
-                      stroke="#e5e7eb"
-                      labelLine={false}
-                      label={false}
-                    >
-                      {pieData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Legend verticalAlign="bottom" height={28} wrapperStyle={{ color: '#374151', fontSize: 12, paddingTop: 8 }} />
-                    <Tooltip formatter={(v: number, n: string) => [v, n]} contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e5e7eb', borderRadius: 8 }} labelStyle={{ color: '#111827' }} itemStyle={{ color: '#111827' }} />
-                  </PieChart>
+                  <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#EFEFEF" />
+                    <XAxis dataKey="dia" stroke="#8A8A8A" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#8A8A8A" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} width={25} />
+                    <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#EFEFEF', borderRadius: '12px', color: '#1A1A1A' }} labelStyle={{ color: '#1A1A1A' }} itemStyle={{ color: '#1A1A1A' }} />
+                    <Legend wrapperStyle={{ color: '#8A8A8A', fontSize: 12 }} />
+                    <Line type="monotone" dataKey="total" name="Total" stroke="#9CA3AF" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="confirmadas" name="Confirmadas" stroke="#2ED47A" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="pendentes" name="Pendentes" stroke="#FFB648" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="canceladas" name="Canceladas" stroke="#FF4848" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="expiradas" name="Expiradas" stroke="#FFA500" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="finalizadas" name="Finalizadas" stroke="#5D5FEF" strokeWidth={2} dot={false} />
+                  </LineChart>
                 </ResponsiveContainer>
               </div>
-            </div>
+            </Card>
+          </div>
+
+          <div className="xl:col-span-4">
+            <Card
+              title={(
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-[#8C54FF]" />
+                  <span>Status (últimos 7 dias)</span>
+                </div>
+              )}
+            >
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-[#2ED47A] rounded-full"></div>
+                    <span className="text-sm font-medium text-gray-700">Confirmadas</span>
+                  </div>
+                  <span className="text-lg font-bold text-gray-900">{reservasConfirmadas.length}</span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-[#FFB648] rounded-full"></div>
+                    <span className="text-sm font-medium text-gray-700">Pendentes</span>
+                  </div>
+                  <span className="text-lg font-bold text-gray-900">{reservasPendentes.length}</span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-[#FF4848] rounded-full"></div>
+                    <span className="text-sm font-medium text-gray-700">Canceladas</span>
+                  </div>
+                  <span className="text-lg font-bold text-gray-900">{reservasCanceladas.length}</span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-[#FFA500] rounded-full"></div>
+                    <span className="text-sm font-medium text-gray-700">Expiradas</span>
+                  </div>
+                  <span className="text-lg font-bold text-gray-900">{reservasExpiradas.length}</span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-[#5D5FEF] rounded-full"></div>
+                    <span className="text-sm font-medium text-gray-700">Finalizadas</span>
+                  </div>
+                  <span className="text-lg font-bold text-gray-900">{reservasFinalizadas.length}</span>
+                </div>
+              </div>
+            </Card>
           </div>
         </div>
-      </div>
 
-      {/* Bottom row: Próximas reservas + Brindes */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 lg:gap-6">
-        <div className="xl:col-span-6 af-section af-border af-card-elev shadow-sm overflow-hidden min-w-0">
-          <div className="mb-2 text-sm lg:text-[15px] font-medium text-[var(--af-text)]">Próximas reservas (7 dias)</div>
-          <ul className="space-y-2 text-sm">
-            {proximas7dias.length === 0 && <li className="text-[var(--af-text-dim)]">Sem reservas nos próximos dias.</li>}
-            {proximas7dias.map((r, idx) => {
-              const dt = parseDateTime(r)
-              const dia = dt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
-              const hora = dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-              return (
-                <li key={r.id} className="flex items-center justify-between gap-3 rounded-md af-border af-card px-3 py-2">
-                  <div className="min-w-0 flex-1 truncate text-[var(--af-text)]">{idx + 1}. {clientesById[(r as any).cliente_id] ?? 'Cliente'}</div>
-                  <div className="shrink-0 text-[var(--af-text-dim)]">{dia} • {hora}</div>
-                </li>
-              )
-            })}
-          </ul>
-        </div>
-
-        <div className="xl:col-span-6 af-section af-border af-card-elev shadow-sm overflow-hidden min-w-0">
-          <div className="mb-2 text-sm lg:text-[15px] font-medium text-[var(--af-text)]">Brindes</div>
-          <div className="text-sm text-[var(--af-text-dim)]">Resgatados: {brindesResgatados} • Pendentes: {brindesPendentes} • Vencidos: {brindesVencidos}</div>
-          <ul className="mt-2 space-y-2 text-sm">
-            {qrcodesSafe.slice(0, 6).map((q: any) => {
-              const owner = clientesById[q.cliente_id as string] ?? 'Cliente'
-              const title = q.tipo_brinde?.trim?.() ? q.tipo_brinde : (q.descricao?.trim?.() ? q.descricao : 'Brinde')
-              const subtitleParts = [owner]
-              if (q.codigo) subtitleParts.push(`#${q.codigo}`)
-              if (q.expires_at) subtitleParts.push(`vence ${new Date(q.expires_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`)
-              const subtitle = subtitleParts.join(' • ')
-              return (
-                <li key={q.id} className="flex items-center justify-between gap-3 rounded-md af-border af-card px-3 py-2">
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate font-medium text-[var(--af-text)]">{title}</div>
-                    <div className="truncate text-xs text-[var(--af-text-dim)]">{subtitle}</div>
+        {/* Bottom row: Lists */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
+          <Card
+            title={(
+              <div className="flex items-center gap-2">
+                <CalendarCheck className="h-5 w-5 text-[#2ED47A]" />
+                <span>Próximas reservas (7 dias)</span>
+              </div>
+            )}
+          >
+            <div className="space-y-2 sm:space-y-3">
+              {proximas7dias.length === 0 && (
+                <div className="text-gray-500 text-sm">Sem reservas nos próximos dias.</div>
+              )}
+              {proximas7dias.map((r, idx) => {
+                const dt = parseDateTime(r)
+                const dia = dt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+                const hora = dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                return (
+                  <div key={r.id} className="flex items-center justify-between p-2 sm:p-3 bg-gray-50 rounded-lg">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium text-gray-900 truncate text-sm sm:text-base">
+                        {idx + 1}. {clientesById[(r as any).cliente_id] ?? 'Cliente'}
+                      </div>
+                    </div>
+                    <div className="text-xs sm:text-sm text-gray-500 whitespace-nowrap ml-2">{dia} • {hora}</div>
                   </div>
-                  {(() => {
-                    const s = (q.status as 'Resgatado' | 'Pendente' | 'Vencido') || 'Pendente'
-                    const cls = 'af-chip rounded-full'
-                    return <span className={`${cls} px-2 py-0.5 text-[11px]`}>{s}</span>
-                  })()}
-                </li>
-              )
-            })}
-            {qrcodesSafe.length === 0 && <li className="text-[var(--af-text-dim)]">Nenhum brinde cadastrado.</li>}
-          </ul>
+                )
+              })}
+            </div>
+          </Card>
+
+          <Card
+            title={(
+              <div className="flex items-center gap-2">
+                <Gift className="h-5 w-5 text-[#FFB648]" />
+                <span>Brindes</span>
+              </div>
+            )}
+          >
+            <div className="mb-3 sm:mb-4">
+              <div className="text-xs sm:text-sm text-gray-500">
+                Resgatados: {brindesResgatados} • Pendentes: {brindesPendentes} • Vencidos: {brindesVencidos}
+              </div>
+            </div>
+            <div className="space-y-2 sm:space-y-3">
+              {qrcodesSafe.slice(0, 6).map((q: any) => {
+                const owner = clientesById[q.cliente_id as string] ?? 'Cliente'
+                const title = q.tipo_brinde?.trim?.() ? q.tipo_brinde : (q.descricao?.trim?.() ? q.descricao : 'Brinde')
+                const subtitleParts = [owner]
+                if (q.codigo) subtitleParts.push(`#${q.codigo}`)
+                if (q.expires_at) subtitleParts.push(`vence ${new Date(q.expires_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`)
+                const subtitle = subtitleParts.join(' • ')
+                const status = (q.status as 'Resgatado' | 'Pendente' | 'Vencido') || 'Pendente'
+                const statusColor = status === 'Resgatado' ? 'bg-green-100 text-green-800' : 
+                                   status === 'Vencido' ? 'bg-red-100 text-red-800' : 
+                                   'bg-orange-100 text-orange-800'
+                return (
+                  <div key={q.id} className="flex items-center justify-between p-2 sm:p-3 bg-gray-50 rounded-lg">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium text-gray-900 truncate text-sm sm:text-base">{title}</div>
+                      <div className="text-xs text-gray-500 truncate">{subtitle}</div>
+                    </div>
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap ml-2 ${statusColor}`}>
+                      {status}
+                    </span>
+                  </div>
+                )
+              })}
+              {qrcodesSafe.length === 0 && (
+                <div className="text-gray-500 text-sm">Nenhum brinde cadastrado.</div>
+              )}
+            </div>
+          </Card>
         </div>
       </div>
     </div>

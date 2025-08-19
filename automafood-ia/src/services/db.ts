@@ -255,8 +255,8 @@ export async function getQrcodeById(id: string) {
 
 export async function createQrcode(payload: Omit<Qrcode, 'id' | 'restaurante_id'>) {
   const rid = await getRestauranteId()
-  // Requisito: sempre enviar este ID fixo para o brinde
-  const genId = 'f1c53073-039c-4de1-b4be-6deddba34131'
+  // Generate unique ID for each brinde
+  const genId = crypto.randomUUID()
   // Definir data de validade padrão: 10 dias após a criação (YYYY-MM-DD)
   const ensureValidDate = (d: Date) => {
     const y = d.getFullYear()

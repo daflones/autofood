@@ -25,6 +25,8 @@ import {
   updateQrcodeExact,
 } from '../services/db'
 
+export type { Cliente, Reserva, Qrcode, Restaurante } from '../services/db'
+
 // Keys
 const keys = {
   reservas: ['reservas'] as const,

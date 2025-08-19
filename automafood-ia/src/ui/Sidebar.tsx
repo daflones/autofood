@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom'
-import { X, LayoutDashboard, CalendarDays, Users2, Gift, Settings } from 'lucide-react'
+import { X, LayoutDashboard, CalendarDays, Users2, Gift, Settings, LogOut } from 'lucide-react'
+import { supabase } from '../lib/supabaseClient'
 
 const links = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -10,6 +11,10 @@ const links = [
 ]
 
 export default function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    window.location.href = '/login'
+  }
   return (
     <>
       {/* Mobile overlay */}
@@ -19,10 +24,10 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
       />
 
       <aside
-        className={`fixed z-40 flex h-[100dvh] w-42 flex-col af-aside p-4 transition-transform lg:static ${open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
+        className={`fixed z-40 flex h-[100dvh] w-64 flex-col bg-white border-r border-gray-200/60 shadow-lg lg:shadow-none transition-transform lg:static ${open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
       >
-        <div className="mb-4 relative">
-          <div className="min-h-20 sm:min-h-24 md:min-h-24 pr-6 overflow-hidden relative">
+        <div className="p-6 border-b border-gray-100 relative">
+          <div className="min-h-16 pr-8 overflow-hidden relative">
             {/* Wordmark fills the container without cropping using object-contain */}
             <img
               src="/logo-wordmark.svg"
@@ -34,35 +39,56 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
           </div>
           <button
             onClick={onClose}
-            className="absolute top-0 right-0 rounded-md p-2 lg:hidden hover:bg-gray-100"
+            className="absolute top-4 right-4 rounded-lg p-2 lg:hidden hover:bg-gray-100 transition-colors"
             aria-label="Close menu"
           >
-            <X className="h-5 w-5" />
+            <X className="h-5 w-5 text-gray-500" />
           </button>
         </div>
 
-        <nav className="mt-2 flex flex-1 flex-col gap-1">
-          {links.map(({ to, label, icon: Icon }) => (
-            <NavLink
-              key={to}
-              to={to}
-              className={({ isActive }) => `group relative ${isActive ? 'af-menu-item af-menu-item-active' : 'af-menu-item'}`}
-              onClick={onClose}
-              end={to === '/'}
-            >
-              {({ isActive }) => (
-                <>
-                  <div className={`af-menu-indicator absolute left-0 ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`} />
-                  <Icon className="h-5 w-5 text-[color:var(--af-text-dim)] group-hover:text-[color:var(--af-text)]" />
-                  <span className="group-hover:text-[color:var(--af-text)] text-[color:var(--af-text-dim)]">{label}</span>
-                </>
-              )}
-            </NavLink>
-          ))}
+        <nav className="flex-1 px-4 py-6">
+          <div className="space-y-2">
+            {links.map(({ to, label, icon: Icon }) => (
+              <NavLink
+                key={to}
+                to={to}
+                className={({ isActive }) => 
+                  `group flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 relative ${
+                    isActive 
+                      ? 'bg-gradient-to-r from-purple-50 to-indigo-50 text-purple-700 shadow-sm' 
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  }`
+                }
+                onClick={onClose}
+                end={to === '/'}
+              >
+                {({ isActive }) => (
+                  <>
+                    {isActive && (
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-purple-600 to-indigo-600 rounded-r-full" />
+                    )}
+                    <Icon className={`h-5 w-5 transition-colors ${
+                      isActive ? 'text-purple-600' : 'text-gray-400 group-hover:text-gray-600'
+                    }`} />
+                    <span className="truncate">{label}</span>
+                  </>
+                )}
+              </NavLink>
+            ))}
+          </div>
         </nav>
 
-        <div className="mt-auto border-t af-divider pt-3 text-xs text-[color:var(--af-text-muted)]">
-          © {new Date().getFullYear()} AutoFood
+        <div className="mt-auto px-4 py-4 border-t border-gray-100 space-y-3">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 text-red-600 hover:bg-red-50"
+          >
+            <LogOut className="h-5 w-5" />
+            <span>Sair</span>
+          </button>
+          <div className="text-xs text-gray-400 font-medium text-center">
+            © {new Date().getFullYear()} AutoFood
+          </div>
         </div>
       </aside>
     </>

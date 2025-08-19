@@ -6,20 +6,9 @@
   text-align: initial;
 }
 
-/* AutomaFood Palette: Dark Blue / Black / White */
-:root {
-  --af-bg: #0b1220;           /* deep navy */
-  --af-surface: #0e1a2b;      /* slightly lighter navy */
-  --af-elev: #14243a;         /* elevated surface */
-  --af-border: rgba(255,255,255,0.12);
-  --af-border-strong: rgba(255,255,255,0.2);
-  --af-text: #ffffff;         /* white text on dark */
-  --af-text-inverse: #0b1220; /* dark text on white */
-  --af-white: #ffffff;
-  --af-black: #111111;
-}
-
-body { background: var(--af-bg); color: var(--af-text); }
+/* Legacy dark palette removed in favor of light theme in src/index.css */
+/* All design tokens now come from index.css :root */
+body { background: transparent; color: inherit; }
 
 /* Helper utility classes to avoid changing Tailwind config */
 .af-card { background: color-mix(in oklab, var(--af-surface) 92%, black 0%); border: 1px solid var(--af-border); }
@@ -93,26 +82,26 @@ body { background: var(--af-bg); color: var(--af-text); }
 .rbc-agenda-table thead > tr > th { border-color: rgba(127, 29, 29, 0.5); color: #fff; }
 .rbc-agenda-date-cell, .rbc-agenda-time-cell, .rbc-agenda-event-cell { border-color: rgba(127, 29, 29, 0.3); }
 
-/* FullCalendar - Black/White Scheme */
+/* FullCalendar - Light Scheme aligned with index.css */
 .fc {
   --fc-small-font-size: 0.82rem;
-  --fc-button-text-color: #ffffff;
-  --fc-button-bg-color: #111111;
+  --fc-button-text-color: #111827;
+  --fc-button-bg-color: #ffffff;
   --fc-button-border-color: #e5e7eb;
-  --fc-button-hover-bg-color: #1f2937;
+  --fc-button-hover-bg-color: #f3f4f6;
   --fc-button-hover-border-color: #d1d5db;
-  --fc-button-active-bg-color: #000000;
-  --fc-button-active-border-color: #9ca3af;
-  --fc-event-bg-color: #111111;
+  --fc-button-active-bg-color: #eff6ff;
+  --fc-button-active-border-color: #bfdbfe;
+  --fc-event-bg-color: #ffffff;
   --fc-event-border-color: #e5e7eb;
   --fc-page-bg-color: transparent;
   --fc-neutral-bg-color: #ffffff;
   --fc-highlight-color: #f3f4f6;
   --fc-border-color: #e5e7eb;
   --fc-today-bg-color: #f5f5f5;
-  color: var(--af-white);
+  color: #111827;
 }
-.fc .fc-toolbar-title { color: var(--af-white); }
+.fc .fc-toolbar-title { color: #111827; }
 .fc .fc-scrollgrid, .fc .fc-scrollgrid-section > td, .fc .fc-scrollgrid-section > th { border-color: var(--fc-border-color); }
 .fc-theme-standard .fc-list { border-color: var(--fc-border-color); }
 .fc .fc-timegrid-slot, .fc .fc-timegrid-axis, .fc .fc-daygrid-day, .fc .fc-daygrid-day-frame { border-color: var(--fc-border-color); }
@@ -120,16 +109,16 @@ body { background: var(--af-bg); color: var(--af-text); }
 .fc .fc-list-heading, .fc .fc-list-table td, .fc .fc-list-table th { border-color: var(--fc-border-color); color: var(--af-white); }
 .fc .fc-list-day-cushion { background: #0f172a; }
 .fc .fc-timegrid-axis-cushion, .fc .fc-timegrid-slot-label-cushion, .fc .fc-daygrid-day-number { color: #f3f4f6; font-weight: 600; }
-.fc .fc-col-header-cell-cushion { color: #fff; }
-.fc .fc-popover { background: rgba(0,0,0,0.9); border: 1px solid var(--fc-border-color); color: #fff; }
-/* Slot lane zebra for visibility */
-.fc .fc-timegrid-slot-lane:nth-child(2n) { background: rgba(12,12,12,0.45); }
-.fc .fc-timegrid-slot-lane:nth-child(2n+1) { background: rgba(0,0,0,0.35); }
-/* Axis stronger */
-.fc .fc-timegrid-axis-frame { background: rgba(0,0,0,0.55); }
-.fc .fc-timegrid-axis-cushion { color: #e5e7eb; font-weight: 700; }
+.fc .fc-col-header-cell-cushion { color: #111827; }
+.fc .fc-popover { background: #ffffff; border: 1px solid var(--fc-border-color); color: #111827; }
+/* Softer lanes on light */
+.fc .fc-timegrid-slot-lane:nth-child(2n) { background: rgba(0,0,0,0.03); }
+.fc .fc-timegrid-slot-lane:nth-child(2n+1) { background: rgba(0,0,0,0.01); }
+/* Axis subtle */
+.fc .fc-timegrid-axis-frame { background: transparent; }
+.fc .fc-timegrid-axis-cushion { color: #4b5563; font-weight: 600; }
 /* Events readability */
-.fc .fc-event { border-radius: 10px; box-shadow: 0 6px 16px rgba(0,0,0,0.35); backdrop-filter: saturate(145%); font-weight: 600; }
+.fc .fc-event { border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.06); backdrop-filter: saturate(115%); font-weight: 600; }
 .fc .fc-timegrid-event .fc-event-time { font-weight: 700; }
 .fc .fc-timegrid-event .fc-event-title { white-space: normal; }
 
@@ -167,11 +156,11 @@ body.afc-dragging * {
 .fc .fc-col-header-cell, .fc .fc-timegrid-axis, .fc-theme-standard td, .fc-theme-standard th {
   border-color: var(--fc-border-color) !important;
 }
-.fc .fc-toolbar-title, .fc .fc-button { color: var(--af-white) !important; }
-.fc .fc-button-primary { background: var(--af-black) !important; border-color: #e5e7eb !important; color: #ffffff !important; }
-.fc .fc-button-primary:not(:disabled):hover { background: #1f2937 !important; }
-.fc .fc-daygrid-day-number, .fc .fc-timegrid-slot-label, .fc .fc-col-header-cell-cushion { color: #ffffff !important; }
-.fc .fc-timegrid-slot { background: var(--af-surface) !important; }
+.fc .fc-toolbar-title, .fc .fc-button { color: #111827 !important; }
+.fc .fc-button-primary { background: #ffffff !important; border-color: #e5e7eb !important; color: #111827 !important; }
+.fc .fc-button-primary:not(:disabled):hover { background: #f3f4f6 !important; }
+.fc .fc-daygrid-day-number, .fc .fc-timegrid-slot-label, .fc .fc-col-header-cell-cushion { color: #111827 !important; }
+.fc .fc-timegrid-slot { background: #ffffff !important; }
 
 /* Selected day highlight (from Reservas.tsx dayCellClassNames) */
 .fc .afc-day-selected {

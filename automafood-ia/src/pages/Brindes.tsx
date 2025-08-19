@@ -1,8 +1,9 @@
-import { useMemo, useRef, useState, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
+import { Card } from '../components/Card'
+import { useQrcodes, useClientes, useCreateQrcode, useUpdateQrcode, useUpdateQrcodeExact, useDeleteQrcodeExact } from '../hooks/useRestaurantData'
 import { format } from 'date-fns'
-import { useQrcodes, useClientes } from '../hooks/useRestaurantData'
-import { useCreateQrcode, useUpdateQrcode, useUpdateQrcodeExact, useDeleteQrcodeExact } from '../hooks/useRestaurantData'
+import { CheckCircle, Clock, XCircle, AlertTriangle, Search, Plus, Trash2, Gift } from 'lucide-react'
 
 export default function Brindes() {
   const { data: qrcodes, isLoading, error } = useQrcodes()
@@ -21,7 +22,7 @@ export default function Brindes() {
     cliente_id: string
   }>({ status: 'Pendente', tipo_brinde: '', cliente_id: '' })
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<'todos' | 'Resgatado' | 'Pendente' | 'Vencido'>('todos')
+  const [statusFilter, setStatusFilter] = useState<'todos' | 'Resgatado' | 'Pendente' | 'Vencido' | 'Expirado'>('todos')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [selectionMode, setSelectionMode] = useState(false)
   const longPressTimer = useRef<number | null>(null)
@@ -174,119 +175,176 @@ export default function Brindes() {
   }, [qrcodes, clientes, search, statusFilter])
 
   return (
-    <div className="space-y-8 lg:space-y-10 min-w-0 overflow-x-hidden">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="af-section-title">Brindes</h1>
-        <div className="flex items-center gap-2 flex-wrap min-w-0 self-start sm:self-auto">
-          {/* Desktop actions */}
-          <button
-            onClick={() => (selectionMode ? disableSelection() : enableSelection())}
-            title="Mais opções"
-            className="hidden sm:inline-flex af-btn-ghost px-3 py-2 text-sm"
-          >
-            ⋯
-          </button>
-          {selectionMode && (
-            <button onClick={bulkDelete} disabled={selected.size === 0} className="hidden sm:inline-flex af-btn-ghost px-4 py-2 text-sm disabled:opacity-40">
-              Excluir Selecionados ({selected.size})
-            </button>
-          )}
-          <button onClick={openCreate} className="af-btn-primary w-auto px-3 py-2 text-xs sm:text-sm">
-            Novo Brinde
-          </button>
-          {/* Mobile action sheet */}
-          {selectionMode && selected.size > 0 && (
-            <div className="inline-flex sm:hidden">
+    <div className="min-h-screen bg-[#F8F9FE] p-6 lg:p-8">
+      <div className="space-y-6 lg:space-y-8">
+        {/* Header */}
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-orange-50">
+              <Gift className="h-6 w-6 text-[#FFB648]" />
+            </div>
+            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Brindes</h1>
+          </div>
+          <div className="flex items-center gap-3">
+            {selectionMode && selected.size > 0 && (
               <button
                 onClick={() => {
                   if (confirm(`Excluir ${selected.size} brinde(s)?`)) {
                     bulkDelete()
                   }
                 }}
-                className="af-btn-ghost px-3 py-2 text-sm"
+                className="af-btn-secondary flex items-center gap-2"
               >
-                Excluir Selecionados
+                <Trash2 className="h-4 w-4" />
+                Excluir ({selected.size})
               </button>
+            )}
+            <button
+              onClick={() => {
+                setEditingId('new')
+                setEditingCreatedAt(null)
+                setForm({ status: 'Pendente', tipo_brinde: '', cliente_id: '' })
+                setOpen(true)
+              }}
+              className="af-btn-primary flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Novo Brinde
+            </button>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <Card
+          title={(
+            <div className="flex items-center gap-2">
+              <Filter className="h-5 w-5 text-[#8C54FF]" />
+              <span>Filtros e Busca</span>
             </div>
           )}
-        </div>
-      </div>
-      <div className="af-section af-card-elev overflow-hidden min-w-0">
-        <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-4 flex-wrap">
-            <span className="text-2xl md:text-3xl font-semibold">Lista de brindes</span>
-            <div className="inline-flex items-center gap-2 flex-wrap">
-              <span className="af-chip text-xs md:text-sm">Resgatados: <b className="ml-1">{countResgatado}</b></span>
-              <span className="af-chip text-xs md:text-sm">Pendentes: <b className="ml-1">{countPendente}</b></span>
-              <span className="af-chip text-xs md:text-sm">Vencidos: <b className="ml-1">{countVencido}</b></span>
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="lg:col-span-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  placeholder="Buscar por nome/telefone do cliente..."
+                  className="af-input pl-10 w-full"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+            </div>
+            <div>
+              <select
+                className="af-input w-full"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as any)}
+              >
+                <option value="todos">Todos os Status</option>
+                <option value="Resgatado">Resgatado</option>
+                <option value="Pendente">Pendente</option>
+                <option value="Vencido">Vencido</option>
+                <option value="Expirado">Expirado</option>
+              </select>
             </div>
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <input
-              placeholder="Buscar por nome/telefone do cliente"
-              className="af-field placeholder:text-slate-400 w-full text-sm md:text-base"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <select
-              className="af-field w-full sm:w-auto text-sm md:text-base"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as any)}
-            >
-              <option className="af-card" value="todos">Todos</option>
-              <option className="af-card" value="Resgatado">Resgatado</option>
-              <option className="af-card" value="Pendente">Pendente</option>
-              <option className="af-card" value="Vencido">Vencido</option>
-            </select>
-          </div>
-        </div>
-        {isLoading && <div className="af-text-dim">Carregando…</div>}
-        {error && <div className="af-alert">Erro ao carregar brindes</div>}
-        {!isLoading && !error && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtered.map((q, idx) => {
-              const rowKey = `${q.id}|||${q.created_at ?? idx}|||${(q as any).cliente_id ?? ''}`
-              const status: 'Resgatado' | 'Pendente' | 'Vencido' = (q as any).status || 'Pendente'
-              const cliente = (clientes ?? []).find((c: any) => c.id === (q as any).cliente_id)
-              return (
-                <div
-                  key={rowKey}
-                  className={`af-list-card af-list-card-info p-6 overflow-hidden rounded-xl ${
-                    status === 'Resgatado'
-                      ? 'border-t-2 border-blue-400/60'
-                      : status === 'Vencido'
-                        ? 'border-t-2 border-red-400/60'
-                        : 'border-t-2 border-white/20'
-                  } ${selectionMode && selected.has(rowKey) ? 'af-selected af-glow ring-2 ring-blue-400/50' : ''} ${flashId === rowKey ? 'af-glow ring-2 ring-blue-400/50' : ''}`}
-                  onTouchStart={() => onCardTouchStart(rowKey)}
-                  onTouchEnd={onCardTouchEnd}
-                  onTouchCancel={onCardTouchEnd}
-                  onClick={() => {
-                    // Ignore only the synthetic tap for the same card that was long-pressed
-                    if (suppressNextTapIdRef.current === rowKey) {
-                      suppressNextTapIdRef.current = null
-                      return
-                    }
-                    if (selectionMode) {
-                      toggleSelect(rowKey, !selected.has(rowKey))
-                    }
-                  }}
-                >
-                  {/* Header */}
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0 flex items-start gap-3">
+        </Card>
+        {/* Lista de Brindes */}
+        <Card
+          title={(
+            <div className="flex items-center gap-2">
+              <Gift className="h-5 w-5 text-[#FFB648]" />
+              <span>Lista de Brindes</span>
+              <span className="text-sm text-gray-500 ml-2">({filtered.length} brindes)</span>
+            </div>
+          )}
+          actions={(
+            <div className="flex items-center gap-3 text-sm">
+              <div className="flex items-center gap-1">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                <span className="font-medium">{countResgatado}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Clock className="h-4 w-4 text-yellow-500" />
+                <span className="font-medium">{countPendente}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <XCircle className="h-4 w-4 text-red-500" />
+                <span className="font-medium">{countVencido}</span>
+              </div>
+            </div>
+          )}
+        >
+          {isLoading && (
+            <div className="text-center py-8 text-gray-500">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFB648] mx-auto"></div>
+              <p className="mt-2">Carregando brindes...</p>
+            </div>
+          )}
+          {error && (
+            <div className="text-center py-8 text-red-500">
+              <AlertTriangle className="h-12 w-12 mx-auto mb-3" />
+              <p>Erro ao carregar brindes.</p>
+            </div>
+          )}
+          {!isLoading && !error && filtered.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              <Gift className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+              <p>Nenhum brinde encontrado.</p>
+            </div>
+          )}
+          {!isLoading && !error && filtered.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filtered.map((q, idx) => {
+                const rowKey = `${q.id}|||${q.created_at ?? idx}|||${(q as any).cliente_id ?? ''}`
+                const status: 'Resgatado' | 'Pendente' | 'Vencido' | 'Expirado' = (q as any).status || 'Pendente'
+                const cliente = (clientes ?? []).find((c: any) => c.id === (q as any).cliente_id)
+                const statusColors = {
+                  Resgatado: { bg: '#f0fff4', border: 'border-l-green-400', dot: 'bg-green-500', icon: CheckCircle },
+                  Pendente: { bg: '#fffbf0', border: 'border-l-yellow-400', dot: 'bg-yellow-500', icon: Clock },
+                  Vencido: { bg: '#fff5f5', border: 'border-l-red-400', dot: 'bg-red-500', icon: XCircle },
+                  Expirado: { bg: '#f8f9fa', border: 'border-l-gray-400', dot: 'bg-gray-500', icon: AlertTriangle },
+                };
+                const s = statusColors[status] || statusColors.Pendente;
+                const StatusIcon = s?.icon || Clock;
+                
+                return (
+                  <div
+                    key={rowKey}
+                    className={`rounded-xl p-4 border-l-4 ${s.border} hover:shadow-md transition-all duration-200 cursor-pointer group ${
+                      selectionMode && selected.has(rowKey) ? 'ring-2 ring-purple-400/50 bg-purple-50/30' : ''
+                    } ${flashId === rowKey ? 'ring-2 ring-purple-400/50' : ''}`}
+                    style={{ backgroundColor: s.bg }}
+                    onTouchStart={() => onCardTouchStart(rowKey)}
+                    onTouchEnd={onCardTouchEnd}
+                    onTouchCancel={onCardTouchEnd}
+                    onClick={() => {
+                      if (suppressNextTapIdRef.current === rowKey) {
+                        suppressNextTapIdRef.current = null
+                        return
+                      }
+                      if (selectionMode) {
+                        toggleSelect(rowKey, !selected.has(rowKey))
+                      }
+                    }}
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-3 h-3 rounded-full ${s.dot}`}></div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-gray-900 truncate">{q.tipo_brinde || 'Brinde'}</h3>
+                        </div>
+                      </div>
                       {selectionMode && (
                         <input
                           type="checkbox"
-                          className="mt-1 hidden sm:block h-4 w-4 rounded border-slate-300 bg-white"
+                          className="af-checkbox"
                           checked={selected.has(rowKey)}
                           onChange={(e) => toggleSelect(rowKey, e.target.checked)}
                         />
                       )}
-                      <div className="title truncate text-base md:text-lg font-semibold">{q.tipo_brinde || 'Brinde'}</div>
                     </div>
-                    <span className="af-badge text-xs md:text-sm shrink-0"><span className="af-badge-dot"/> {status}</span>
-                  </div>
 
                   {/* Details */}
                   <div className="mt-3 space-y-1.5 min-w-0">
@@ -314,37 +372,38 @@ export default function Brindes() {
                   </div>
 
                   {/* Actions */}
-                  <div className="mt-4 flex flex-wrap items-center justify-between gap-2 relative">
+                  <div className="mt-4 flex items-center justify-between gap-2 relative">
                     <div className="flex items-center gap-2">
-                      {/* Único botão: mostra o status atual e abre menu */}
+                      {/* Status button */}
                       <button
                         ref={(el) => { if (el) statusAnchorRef.current = el }}
                         onClick={(e) => {
                           const id = rowKey
                           setStatusMenuId((prev) => (prev === id ? null : id))
                           const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect()
-                          // Menu size approximations (w-56 => 224px wide, ~132px tall for 3 items + padding)
                           const approxMenuWidth = 224
                           const approxMenuHeight = 132
                           const gap = 8
                           const viewH = window.innerHeight
                           const viewW = window.innerWidth
-                          // Prefer below; flip up if it would overflow
                           const desiredTop = rect.bottom + gap
                           const flipTop = rect.top - approxMenuHeight - gap
                           const top = desiredTop + approxMenuHeight > viewH ? Math.max(8, flipTop) : desiredTop
-                          // Keep menu inside viewport horizontally
                           const left = Math.min(Math.max(8, rect.left), Math.max(8, viewW - approxMenuWidth - 8))
                           setStatusMenuPos({ top, left })
                         }}
-                        className="af-btn-ghost px-4 py-2 text-sm md:text-base"
+                        className="px-3 py-1.5 text-xs font-medium rounded-full transition-colors"
+                        style={{
+                          backgroundColor: status === 'Resgatado' ? '#dcfce7' : status === 'Vencido' ? '#fef2f2' : status === 'Expirado' ? '#f9fafb' : '#fefce8',
+                          color: status === 'Resgatado' ? '#166534' : status === 'Vencido' ? '#991b1b' : status === 'Expirado' ? '#374151' : '#a16207'
+                        }}
                         title="Alterar status"
                       >
                         {q.status || 'Pendente'}
                       </button>
                       {statusMenuId === rowKey && statusMenuPos && createPortal(
                         <div
-                          className="fixed z-[9999] af-card p-2 rounded-md shadow-lg ring-1 ring-white/10 w-56"
+                          className="fixed z-[9999] af-card-elev p-2 rounded-md shadow-2xl ring-1 ring-[var(--af-border)] w-56"
                           style={{ top: statusMenuPos.top, left: statusMenuPos.left }}
                           onMouseDownCapture={(e) => e.stopPropagation()}
                           onTouchStartCapture={(e) => e.stopPropagation()}
@@ -378,9 +437,22 @@ export default function Brindes() {
                         </div>, document.body
                       )}
                     </div>
-                    <div className="flex items-center gap-2 ml-auto">
-                      <button onClick={() => openEdit(q)} className="af-btn-ghost px-4 py-2 text-sm md:text-base">Editar</button>
-                      <button onClick={() => { if (confirm('Excluir este brinde?')) deleteQrcodeExact.mutate({ id: q.id, created_at: q.created_at!, cliente_id: (q as any).cliente_id }) }} className="af-btn-ghost px-4 py-2 text-sm md:text-base">Excluir</button>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => openEdit(q)} 
+                        className="px-3 py-1.5 text-sm text-purple-600 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition-colors"
+                      >
+                        Editar
+                      </button>
+                      {!selectionMode && (
+                        <button 
+                          onClick={() => { if (confirm('Excluir este brinde?')) deleteQrcodeExact.mutate({ id: q.id, created_at: q.created_at!, cliente_id: (q as any).cliente_id }) }} 
+                          className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                          title="Excluir brinde"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -389,43 +461,69 @@ export default function Brindes() {
             {filtered.length === 0 && <div className="py-6 text-sm af-text-dim">Nenhum brinde encontrado.</div>}
           </div>
         )}
-      </div>
-
+      </Card>
         {open && (
-          <div className="fixed inset-0 z-50 grid place-items-center bg-white/90 p-4">
-            <div className="w-full max-w-md p-5 overflow-hidden min-w-0 rounded-md shadow-md ring-1 ring-slate-200">
-              <div className="mb-3 text-lg font-semibold">{editingId ? 'Editar brinde' : 'Novo brinde'}</div>
-              <form onSubmit={onSubmit} className="space-y-3">
+          <div className="fixed inset-0 z-50 grid place-items-center bg-black/30 p-4">
+            <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl border border-gray-100 p-6 sm:p-8">
+              <h2 className="text-xl font-bold text-gray-900 mb-6">{editingId ? 'Editar brinde' : 'Novo brinde'}</h2>
+              <form onSubmit={onSubmit} className="space-y-5">
                 <div>
-                  <label className="mb-1 block af-label">Tipo do brinde</label>
-                  <input className="af-field" value={form.tipo_brinde} onChange={(e) => setForm((f) => ({ ...f, tipo_brinde: e.target.value }))} placeholder="Ex.: Desconto, Bebida, Sobremesa" required />
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Tipo do brinde</label>
+                  <input 
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" 
+                    value={form.tipo_brinde} 
+                    onChange={(e) => setForm((f) => ({ ...f, tipo_brinde: e.target.value }))} 
+                    placeholder="Ex.: Desconto, Bebida, Sobremesa" 
+                    required 
+                  />
                 </div>
                 <div>
-                  <label className="mb-1 block af-label">Cliente</label>
-                  <select className="af-field" value={form.cliente_id} onChange={(e) => setForm((f) => ({ ...f, cliente_id: e.target.value }))} required>
-                    <option className="af-card" value="">Sem cliente</option>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Cliente</label>
+                  <select 
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" 
+                    value={form.cliente_id} 
+                    onChange={(e) => setForm((f) => ({ ...f, cliente_id: e.target.value }))} 
+                    required
+                  >
+                    <option value="">Selecione um cliente</option>
                     {(clientes ?? []).map((c: any) => (
-                      <option className="af-card" key={c.id} value={c.id}>{c.nome || 'Sem nome'} {c.telefone ? `• ${c.telefone}` : ''}</option>
+                      <option key={c.id} value={c.id}>{c.nome || 'Sem nome'} {c.telefone ? `• ${c.telefone}` : ''}</option>
                     ))}
                   </select>
                 </div>
-              <div>
-                <label className="mb-1 block af-label">Status</label>
-                <select className="af-field" value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as any }))}>
-                  <option className="af-card" value="Pendente">Pendente</option>
-                  <option className="af-card" value="Resgatado">Resgatado</option>
-                  <option className="af-card" value="Vencido">Vencido</option>
-                  <option className="af-card" value="Expirado">Expirado</option>
-                </select>
-              </div>
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button type="button" onClick={() => setOpen(false)} className="rounded-md af-card px-4 py-2 text-sm text-[var(--af-text)] hover:af-glow">Cancelar</button>
-                <button type="submit" className="af-btn-primary w-auto">Salvar</button>
-              </div>
-            </form>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                  <select 
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" 
+                    value={form.status} 
+                    onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as any }))}
+                  >
+                    <option value="Pendente">Pendente</option>
+                    <option value="Resgatado">Resgatado</option>
+                    <option value="Vencido">Vencido</option>
+                    <option value="Expirado">Expirado</option>
+                  </select>
+                </div>
+                <div className="flex items-center justify-end gap-3 pt-4">
+                  <button 
+                    type="button" 
+                    onClick={() => setOpen(false)} 
+                    className="px-6 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    type="submit" 
+                    className="px-6 py-2 text-sm font-medium text-white bg-[#6366F1] hover:bg-[#5856eb] rounded-xl transition-colors"
+                  >
+                    Salvar
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }

@@ -1,710 +1,650 @@
-import { useMemo, useRef, useState, useEffect } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { startOfWeek, addDays, addWeeks, format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
-import { useReservas, useClientes, useDeleteReserva, useCreateReserva, useUpdateReserva } from '../hooks/useRestaurantData'
+import { format, parseISO, addDays } from 'date-fns'
+import { Calendar, Filter, Users, Clock, Edit, MoreVertical, Trash2, CheckSquare, Square } from 'lucide-react'
+import { useReservas, useCreateReserva, useUpdateReserva, useDeleteReserva, useClientes } from '../hooks/useRestaurantData';
+import type { Reserva } from '../services/db';
+import WeeklyCalendar from '../components/WeeklyCalendar'
+import { Card } from '../components/Card'
+
+// Tipos
+type TStatus = 'pendente' | 'confirmada' | 'cancelada' | 'finalizada' | 'expirada';
+
+const statusColor = (status: TStatus) => {
+  switch (status) {
+    case 'confirmada':
+      return { bg: 'bg-green-50', text: 'text-green-700', border: 'border-l-green-400', dot: 'bg-[#2ED47A]' }
+    case 'pendente':
+      return { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-l-orange-400', dot: 'bg-[#FFB648]' }
+    case 'cancelada':
+      return { bg: 'bg-red-50', text: 'text-red-700', border: 'border-l-red-400', dot: 'bg-[#FF4848]' }
+    case 'finalizada':
+      return { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-l-blue-400', dot: 'bg-[#5D5FEF]' }
+    case 'expirada':
+      return { bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-l-gray-400', dot: 'bg-gray-400' }
+    default:
+      return { bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-l-gray-400', dot: 'bg-gray-400' }
+  }
+}
 
 export default function Reservas() {
-  const { data: reservas, isLoading, error, refetch } = useReservas() as any
-  const { data: clientes } = useClientes()
-  const deleteReserva = useDeleteReserva()
-  const createReserva = useCreateReserva()
-  const updateReserva = useUpdateReserva()
+  const { data: reservas, isLoading, error, refetch } = useReservas() as any;
+  const { data: clientes } = useClientes();
+  const createReserva = useCreateReserva();
+  const updateReserva = useUpdateReserva();
+  const deleteReserva = useDeleteReserva();
 
   const clienteNome = (clienteId?: string | null) => {
-    const c = (clientes ?? []).find((x) => x.id === clienteId)
-    return c?.nome ?? '—'
-  }
+    const cliente = clientes?.find(c => c.id === clienteId)?.nome || 'Cliente não encontrado'
+    return cliente;
+  };
 
-  // Fecha o menu de status ao clicar fora
+  const [statusMenuPos, setStatusMenuPos] = useState<{ reserva: Reserva; top: number; left: number; width: number } | null>(
+    null
+  );
+
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
-      const t = e.target as HTMLElement | null
-      if (!t) return
-      if (!t.closest('[data-status-menu]')) setExpandedId(null)
-    }
-    document.addEventListener('mousedown', onDocClick)
-    return () => document.removeEventListener('mousedown', onDocClick)
-  }, [])
-
-  // Removido: auto-sync em massa para evitar alterar todas as reservas ao carregar
-
-  // (grade de horários removida na visão simplificada)
-
-  const fmtDataHora = (data_reserva?: string | null, hora_reserva?: string | null) => {
-    if (!data_reserva) return 'Sem data'
-    // Formata a data_reserva (YYYY-MM-DD) manualmente para evitar mudanças por fuso
-    const [y, m, d] = data_reserva.split('-')
-    const dia = `${d}/${m}/${y}`
-    const hora = (hora_reserva ?? '00:00').slice(0, 5)
-    return `${dia} às ${hora}`
-  }
+      const t = e.target as HTMLElement | null;
+      if (!t) return;
+      if (!t.closest('[data-status-menu-container]')) setStatusMenuPos(null);
+    };
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, []);
 
   const sorted = useMemo(() => {
     return [...(reservas ?? [])].sort((a, b) => {
-      const da = a.data_reserva ? new Date(`${a.data_reserva}T${(a as any).hora_reserva ?? '00:00'}`).getTime() : 0
-      const db = b.data_reserva ? new Date(`${b.data_reserva}T${(b as any).hora_reserva ?? '00:00'}`).getTime() : 0
-      return da - db
-    })
-  }, [reservas])
+      const da = a.data_reserva ? new Date(`${a.data_reserva}T${a.hora_reserva ?? '00:00'}`).getTime() : 0;
+      const db = b.data_reserva ? new Date(`${b.data_reserva}T${b.hora_reserva ?? '00:00'}`).getTime() : 0;
+      return da - db;
+    });
+  }, [reservas]);
 
-  // Selected day filter (YYYY-MM-DD)
-  const todayStr = useMemo(() => {
-    const d = new Date()
-    const y = d.getFullYear()
-    const m = String(d.getMonth() + 1).padStart(2, '0')
-    const dd = String(d.getDate()).padStart(2, '0')
-    return `${y}-${m}-${dd}`
-  }, [])
-  const [selectedDay, setSelectedDay] = useState<string>(todayStr)
-  // List filters
-  const [q, setQ] = useState('')
-  const [statusSel, setStatusSel] = useState<'todos' | 'pendente' | 'confirmada' | 'cancelada' | 'finalizada' | 'expirada'>('todos')
-  const [pagamentoSel, setPagamentoSel] = useState<'todos' | 'pago' | 'pendente'>('todos')
-  // Bulk selection state (lista)
-  const [selectionMode, setSelectionMode] = useState(false)
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  const longPressTimerRef = useRef<number | null>(null)
-  const suppressNextTapIdRef = useRef<string | null>(null)
-  const enableSelection = () => setSelectionMode(true)
-  const disableSelection = () => { setSelectionMode(false); setSelectedIds(new Set()) }
-  const toggleSelectId = (id: string | number, checked: boolean) => {
-    const key = String(id)
-    setSelectedIds((prev) => {
-      const next = new Set(prev)
-      if (checked) next.add(key)
-      else next.delete(key)
-      return next
-    })
-  }
-  const bulkDeleteSelected = async () => {
-    if (selectedIds.size === 0) return
-    if (!confirm(`Excluir ${selectedIds.size} reserva(s)?`)) return
-    const ids = Array.from(selectedIds)
-    await Promise.all(ids.map((id) => deleteReserva.mutateAsync(id)))
-    disableSelection()
-  }
-  const onCardTouchStart = (id: string | number) => {
-    if (longPressTimerRef.current) window.clearTimeout(longPressTimerRef.current)
-    longPressTimerRef.current = window.setTimeout(() => {
-      setSelectionMode(true)
-      toggleSelectId(id, true)
-      // Prevent the synthetic click after long-press from toggling back (only for this card)
-      suppressNextTapIdRef.current = String(id)
-    }, 2000)
-  }
-  const onCardTouchEnd = () => {
-    if (longPressTimerRef.current) {
-      window.clearTimeout(longPressTimerRef.current)
-      longPressTimerRef.current = null
+  // Weekly calendar state and navigation
+  const [selectedDay, setSelectedDay] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [q, setQ] = useState('');
+  const [statusSel, setStatusSel] = useState<'todos' | TStatus>('todos');
+  const [pagamentoSel, setPagamentoSel] = useState<'todos' | 'pago' | 'pendente'>('todos');
+
+  const now = new Date();
+  const effectiveStatus = (r: Reserva): TStatus => {
+    const dateStr = r.data_reserva;
+    const timeStr = r.hora_reserva?.slice(0, 5) || '00:00';
+    const base = dateStr ? new Date(`${dateStr}T${timeStr}:00`) : null;
+    const afterDate = !!(base && now > base);
+    const status = r.status ?? 'pendente';
+    const pago = !!r.status_pagamento;
+    if (afterDate && (status === 'pendente' || (status === 'confirmada' && !pago))) return 'expirada';
+    return status as TStatus;
+  };
+
+  // Removed reservasPorDia (was used by old monthly calendar)
+  // Confirmed reservations per day for the weekly calendar counters
+  const confirmedCountByDay = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const r of reservas ?? []) {
+      const day = r.data_reserva;
+      if (!day) continue;
+      if (effectiveStatus(r) !== 'confirmada') continue;
+      map[day] = (map[day] ?? 0) + 1;
     }
-  }
-  // Status derivado conforme regras novas
-  const now = new Date()
-  const effectiveStatus = (r: any) => {
-    const dateStr = r.data_reserva as string | undefined
-    const timeStr = (r.hora_reserva as string | undefined)?.slice(0,5) || '00:00'
-    const base = dateStr ? new Date(`${dateStr}T${timeStr}:00`) : null
-    const afterDate = !!(base && now > base)
-    const status = (r.status ?? 'pendente') as string
-    const pago = !!r.status_pagamento
-    // Regras (ajustadas):
-    // - NÃO auto-finaliza quando pagar; finalização é uma ação explícita do usuário
-    // - Auto-expira se passou da data e (pendente ou confirmada não paga)
-    if (afterDate && (status === 'pendente' || (status === 'confirmada' && !pago))) return 'expirada'
-    return status
-  }
+    return map;
+  }, [reservas]);
 
   const filtered = useMemo(() => {
-    return sorted.filter((r: any) => {
-      if (r.data_reserva !== selectedDay) return false
-      const nome = clienteNome(r.cliente_id).toLowerCase()
-      const txt = q.toLowerCase().trim()
-      const matchesText = txt.length === 0 || nome.includes(txt)
-      const effStatus = effectiveStatus(r)
-      const matchesStatus = statusSel === 'todos' || effStatus === statusSel
-      const matchesPagamento = pagamentoSel === 'todos' || (pagamentoSel === 'pago' ? !!r.status_pagamento : !r.status_pagamento)
-      return matchesText && matchesStatus && matchesPagamento
-    })
-  }, [sorted, selectedDay, q, statusSel, pagamentoSel])
+    return sorted.filter((r: Reserva) => {
+      if (r.data_reserva !== selectedDay) return false;
+      const nome = clienteNome(r.cliente_id).toLowerCase();
+      const txt = q.toLowerCase().trim();
+      if (txt && !nome.includes(txt)) return false;
+      if (statusSel !== 'todos' && effectiveStatus(r) !== statusSel) return false;
+      if (pagamentoSel !== 'todos' && r.status_pagamento !== (pagamentoSel === 'pago')) return false;
+      return true;
+    });
+  }, [sorted, selectedDay, q, statusSel, pagamentoSel, clienteNome]);
 
-  // Agrupa reservas por data (YYYY-MM-DD)
-  const reservasByDate = useMemo(() => {
-    const map = new Map<string, any[]>()
-    for (const r of reservas ?? []) {
-      const key = (r as any).data_reserva
-      if (!key) continue
-      const arr = map.get(key) ?? []
-      arr.push(r)
-      map.set(key, arr)
-    }
-    return map
-  }, [reservas])
+  // Week navigation handlers
+  const goToday = () => setSelectedDay(format(new Date(), 'yyyy-MM-dd'));
+  const goPrevWeek = () => setSelectedDay(format(addDays(parseISO(selectedDay), -7), 'yyyy-MM-dd'));
+  const goNextWeek = () => setSelectedDay(format(addDays(parseISO(selectedDay), 7), 'yyyy-MM-dd'));
 
-  // Modal state (create/edit)
-  const [open, setOpen] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  // posição do menu de status (portal)
-  const [statusMenuPos, setStatusMenuPos] = useState<{ id: string; top: number; left: number } | null>(null)
-  const [form, setForm] = useState<{ cliente_id: string; data_reserva: string; hora_reserva: string; status: string; status_pagamento: boolean; n_pessoas: number; observacao: string }>({
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState({
     cliente_id: '',
-    data_reserva: '',
-    hora_reserva: '',
-    status: 'pendente',
-    status_pagamento: false,
     n_pessoas: 2,
+    data_reserva: selectedDay,
+    hora_reserva: '19:00',
     observacao: '',
-  })
-  const [submitError, setSubmitError] = useState<string | null>(null)
+    status: 'pendente' as TStatus,
+    status_pagamento: false,
+  });
+  const [submitError, setSubmitError] = useState('');
+  const [selectedReservas, setSelectedReservas] = useState<Set<string>>(new Set());
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<'single' | 'bulk'>('single');
+  const [singleDeleteId, setSingleDeleteId] = useState<string | null>(null);
 
   const openCreate = () => {
-    setEditingId(null)
-    setForm({ cliente_id: '', data_reserva: '', hora_reserva: '', status: 'pendente', status_pagamento: false, n_pessoas: 2, observacao: '' })
-    setOpen(true)
-  }
-
-  const openEdit = (r: any) => {
-    setEditingId(r.id)
+    setEditingId('new');
     setForm({
-      cliente_id: r.cliente_id ?? '',
-      data_reserva: r.data_reserva ?? '',
-      hora_reserva: (r.hora_reserva ?? '').slice(0, 5),
-      status: r.status ?? 'pendente',
-      status_pagamento: !!r.status_pagamento,
-      n_pessoas: Number(r.n_pessoas ?? 2),
-      observacao: r.observacao ?? '',
-    })
-    setOpen(true)
-  }
-  // Quick actions
+      cliente_id: '',
+      n_pessoas: 2,
+      data_reserva: selectedDay,
+      hora_reserva: '19:00',
+      observacao: '',
+      status: 'pendente',
+      status_pagamento: false,
+    });
+  };
+
+  const openEdit = (r: Reserva) => {
+    setEditingId(r.id);
+    setForm({
+      cliente_id: r.cliente_id || '',
+      n_pessoas: r.n_pessoas || 0,
+      data_reserva: r.data_reserva || '',
+      hora_reserva: r.hora_reserva || '',
+      observacao: r.observacao || '',
+      status: (r.status as TStatus) || 'pendente',
+      status_pagamento: r.status_pagamento ?? false,
+    });
+  };
+
+  const close = () => {
+    setEditingId(null);
+  };
+
+  const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).hasAttribute('data-overlay')) {
+      close();
+    }
+  };
+
   const setStatus = async (id: string, status: 'pendente' | 'confirmada' | 'cancelada') => {
-    await updateReserva.mutateAsync({ id, payload: { status } as any })
-    refetch?.()
-  }
-  // removed: togglePago (pedido do usuário para não alterar no card)
+    await updateReserva.mutateAsync({ id, payload: { status } as any });
+    refetch?.();
+  };
 
-  // Removido: manipuladores de arrastar/redimensionar do calendário anterior
+  const toggleSelectReserva = (id: string) => {
+    setSelectedReservas(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
 
-  // Removido: manipuladores de arrastar/redimensionar do calendário anterior
+  const selectAllReservas = () => {
+    const allIds = filtered.map(r => r.id);
+    setSelectedReservas(new Set(allIds));
+  };
+
+  const clearSelection = () => {
+    setSelectedReservas(new Set());
+    setSelectionMode(false);
+  };
+
+  const handleSingleDelete = (id: string) => {
+    setSingleDeleteId(id);
+    setDeleteTarget('single');
+    setShowDeleteConfirm(true);
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedReservas.size === 0) return;
+    setDeleteTarget('bulk');
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    try {
+      if (deleteTarget === 'single' && singleDeleteId) {
+        await deleteReserva.mutateAsync(singleDeleteId);
+      } else if (deleteTarget === 'bulk') {
+        await Promise.all(
+          Array.from(selectedReservas).map(id => deleteReserva.mutateAsync(id))
+        );
+        clearSelection();
+      }
+      refetch?.();
+      setShowDeleteConfirm(false);
+      setSingleDeleteId(null);
+    } catch (error) {
+      console.error('Erro ao excluir:', error);
+    }
+  };
+
+  const cancelDelete = () => {
+    setShowDeleteConfirm(false);
+    setSingleDeleteId(null);
+  };
 
   const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSubmitError(null)
+    e.preventDefault();
+    setSubmitError('');
     try {
-      // Basic validation for required fields
-      if (!form.data_reserva || !form.hora_reserva) {
-        throw new Error('Informe data e hora da reserva.')
-      }
       const payload = {
-        // cliente_id may be nullable in schema; only send when provided
-        ...(form.cliente_id ? { cliente_id: form.cliente_id } : {}),
-        data_reserva: form.data_reserva,
-        hora_reserva: form.hora_reserva,
-        status: form.status,
-        status_pagamento: !!form.status_pagamento,
-        n_pessoas: Number(form.n_pessoas || 1),
-        // observacao can be omitted if empty
-        ...(form.observacao ? { observacao: form.observacao } : {}),
-      } as any
-      if (editingId) {
-        await updateReserva.mutateAsync({ id: editingId, payload })
+        ...form,
+        n_pessoas: form.n_pessoas,
+        status_pagamento: form.status_pagamento,
+      };
+      if (editingId && editingId !== 'new') {
+        await updateReserva.mutateAsync({ id: editingId, payload });
       } else {
-        await createReserva.mutateAsync(payload)
-        // Ensure the created item is visible in the list right away
-        setSelectedDay(form.data_reserva)
+        await createReserva.mutateAsync(payload);
       }
-      // Force refresh to reflect server state
-      await refetch()
-      setOpen(false)
+      refetch?.();
+      close();
     } catch (err: any) {
-      setSubmitError(err?.message || 'Falha ao salvar a reserva. Tente novamente.')
+      setSubmitError(err.message || 'Ocorreu um erro');
     }
-  }
-
-  // Expand on card click to reveal actions
-  const [expandedId, setExpandedId] = useState<string | null>(null)
-
-  // Datas utilitárias
-  const parseYYYYMMDD = (s: string) => {
-    const [y, m, d] = s.split('-').map(Number)
-    return new Date(y, (m || 1) - 1, d || 1)
-  }
-  // Visão simplificada: seletor semanal (Dom–Sáb)
-  const initSelected = parseYYYYMMDD(selectedDay)
-  const [viewMonthDate, setViewMonthDate] = useState<Date>(() => new Date(initSelected.getFullYear(), initSelected.getMonth(), 1))
-  // Semana inicial deve representar o dia de hoje/selecionado
-  const [weekIndex, setWeekIndex] = useState<number>(() => {
-    const monthRef = new Date(initSelected.getFullYear(), initSelected.getMonth(), 1)
-    return weekIndexFor(initSelected, monthRef)
-  }) // 0..4 (5 semanas)
-  const monthStartWeek = startOfWeek(new Date(viewMonthDate.getFullYear(), viewMonthDate.getMonth(), 1), { weekStartsOn: 0 })
-  const viewWeekStart = addWeeks(monthStartWeek, weekIndex)
-  const weekDays: Date[] = Array.from({ length: 7 }, (_, i) => addDays(viewWeekStart, i))
-
-  // Date Picker (modal)
-  const [datePickerOpen, setDatePickerOpen] = useState(false)
-  const [pickerAnchor, setPickerAnchor] = useState<{ top: number; left: number; height: number } | null>(null)
-  const [pickerMonth, setPickerMonth] = useState<Date>(() => new Date(viewMonthDate.getFullYear(), viewMonthDate.getMonth(), 1))
-
-  // Visual flash for selected day (used when clicking "Hoje")
-  const [flashDay, setFlashDay] = useState<string | null>(null)
-  const flashToday = (key: string) => {
-    setFlashDay(key)
-    window.setTimeout(() => setFlashDay((cur) => (cur === key ? null : cur)), 900)
-  }
-
-  const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-  function weekIndexFor(target: Date, monthRef: Date) {
-    const base = startOfWeek(new Date(monthRef.getFullYear(), monthRef.getMonth(), 1), { weekStartsOn: 0 })
-    const diffMs = target.setHours(0,0,0,0) - base.setHours(0,0,0,0)
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-    const idx = Math.floor(diffDays / 7)
-    return Math.max(0, Math.min(4, idx))
-  }
-  const goToDay = (d: Date) => {
-    const monthRef = new Date(d.getFullYear(), d.getMonth(), 1)
-    setViewMonthDate(monthRef)
-    setWeekIndex(weekIndexFor(d, monthRef))
-    setSelectedDay(ymd(d))
-    setDatePickerOpen(false)
-  }
-
-  // (drag-and-drop por horário removido na visão simplificada)
-
-  // Removido: handler antigo de drop por dia (agora usamos grade de horas)
+  };
 
   return (
-    <div className="space-y-8 lg:space-y-10">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="af-section-title">Reservas</h1>
-        <div className="flex items-center gap-2">
-          {/* Desktop: toggle selection */}
-          <button
-            onClick={() => (selectionMode ? disableSelection() : enableSelection())}
-            className="hidden sm:inline-flex af-btn-ghost px-3 py-2 text-sm"
-            title="Mais opções"
-          >
-            ⋯
-          </button>
-          {selectionMode && (
-            <button
-              onClick={bulkDeleteSelected}
-              disabled={selectedIds.size === 0}
-              className="hidden sm:inline-flex af-btn-ghost px-4 py-2 text-sm disabled:opacity-40"
-            >
-              Excluir Selecionados ({selectedIds.size})
-            </button>
-          )}
-          {/* Mobile contextual actions: only when selection active */}
-          {selectionMode && selectedIds.size > 0 && (
-            <div className="inline-flex sm:hidden gap-2">
-              <button onClick={bulkDeleteSelected} className="af-btn-ghost px-3 py-2 text-sm">Excluir Selecionados</button>
+    <>
+    <div className="min-h-screen bg-[#F8F9FE] p-3 sm:p-4 md:p-6 lg:p-8">
+      <div className="space-y-4 sm:space-y-6 lg:space-y-8">
+        {/* Header */}
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl bg-blue-50">
+              <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-[#6366F1]" />
             </div>
-          )}
-          <button onClick={openCreate} className="af-btn-primary">Nova Reserva</button>
-        </div>
-      </div>
-
-      {/* Modal: Seletor de dia/mês/ano */}
-      {datePickerOpen && (
-        <div className="fixed inset-0 z-50">
-          {/* Fundo escurecido */}
-          <div className="absolute inset-0 bg-white/70" onClick={() => setDatePickerOpen(false)} />
-          {/* Popover ancorado ao botão */}
-          <div
-            className="absolute z-10 w-[280px] sm:w-[320px] rounded-xl af-card-elev shadow-xl"
-            style={{
-              top: Math.min((pickerAnchor?.top ?? 0) + (pickerAnchor?.height ?? 0) + 8, window.scrollY + window.innerHeight - 360),
-              left: Math.min((pickerAnchor?.left ?? 0), window.scrollX + window.innerWidth - (window.innerWidth < 640 ? 296 : 336)),
-            }}
-          >
-            <div className="p-3 sm:p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <button
-                  className="rounded-md border border-[var(--af-border)] px-2 py-1 text-xs text-[var(--af-text)] hover:bg-gray-100"
-                  onClick={() => setPickerMonth(new Date(pickerMonth.getFullYear(), pickerMonth.getMonth() - 1, 1))}
-                >←</button>
-                <div className="text-sm text-[var(--af-text)]">{format(pickerMonth, 'MMMM yyyy', { locale: ptBR })}</div>
-                <button
-                  className="rounded-md border border-[var(--af-border)] px-2 py-1 text-xs text-[var(--af-text)] hover:bg-gray-100"
-                  onClick={() => setPickerMonth(new Date(pickerMonth.getFullYear(), pickerMonth.getMonth() + 1, 1))}
-                >→</button>
-              </div>
-              <div className="grid grid-cols-7 gap-1 text-center text-[10px] sm:text-[11px] text-[var(--af-text-dim)] mb-1">
-                {['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map((d) => (<div key={d} className="py-1">{d}</div>))}
-              </div>
-              {(() => {
-                const y = pickerMonth.getFullYear()
-                const m = pickerMonth.getMonth()
-                const first = new Date(y, m, 1)
-                const firstWeekStart = startOfWeek(first, { weekStartsOn: 0 })
-                const cells: Date[] = []
-                // Build 6 weeks grid to cover month
-                for (let w = 0; w < 6; w++) {
-                  for (let i = 0; i < 7; i++) {
-                    cells.push(addDays(firstWeekStart, w * 7 + i))
-                  }
-                }
-                return (
-                  <div className="grid grid-cols-7 gap-1">
-                    {cells.map((d, idx) => {
-                      const inMonth = d.getMonth() === m
-                      const label = d.getDate()
-                      return (
-                        <button
-                          key={idx}
-                          disabled={!inMonth}
-                          onClick={() => inMonth && goToDay(d)}
-                          className={`p-1.5 sm:p-2 md:p-3 text-center border transition
-                            ${inMonth ? 'bg-white text-[var(--af-text)] border-[var(--af-border)] hover:bg-primary-50' : 'bg-transparent text-[var(--af-text-muted)] border-transparent'}
-                            ${inMonth && ymd(d) === selectedDay ? 'af-card' : ''}
-                          `}
-                        >
-                          {label}
-                        </button>
-                      )
-                  })}
-                </div>
-              )
-            })()}
-            </div>
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Reservas</h1>
           </div>
-        </div>
-      )}
-      {/* Calendário: seletor semanal simples (Dom–Sáb) */}
-      <div className="af-section af-card-elev shadow-sm overflow-hidden min-w-0">
-        <div className="mb-4 grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
-          <div className="af-subtitle order-1">
-            {(() => {
-              const ws = weekDays[0]
-              const we = weekDays[6]
-              return `Semana de ${format(ws, 'dd/MM')} até ${format(we, 'dd/MM')}`
-            })()}
-          </div>
-          <div className="flex items-center gap-3 justify-between md:justify-center order-2">
-            <button
-              className="af-btn-ghost px-4 py-2 text-sm md:text-base"
-              onClick={() => {
-                if (weekIndex > 0) setWeekIndex(weekIndex - 1)
-                else { // ir para a última semana do mês anterior (0..4)
-                  const prev = new Date(viewMonthDate.getFullYear(), viewMonthDate.getMonth() - 1, 1)
-                  setViewMonthDate(prev)
-                  setWeekIndex(4)
-                }
-              }}
-            >← Semana</button>
-            <button
-              className="af-btn-ghost px-4 py-2 text-sm md:text-base"
-              onClick={() => {
-                const today = new Date()
-                const monthRef = new Date(today.getFullYear(), today.getMonth(), 1)
-                setViewMonthDate(monthRef)
-                setWeekIndex(weekIndexFor(today, monthRef))
-                setSelectedDay(ymd(today))
-                flashToday(ymd(today))
-              }}
-            >Hoje</button>
-            <button
-              className="af-btn-ghost px-4 py-2 text-sm md:text-base"
-              onClick={() => {
-                if (weekIndex < 4) setWeekIndex(weekIndex + 1)
-                else { // ir para a primeira semana do próximo mês
-                  const next = new Date(viewMonthDate.getFullYear(), viewMonthDate.getMonth() + 1, 1)
-                  setViewMonthDate(next)
-                  setWeekIndex(0)
-                }
-              }}
-            >Semana →</button>
-          </div>
-          <div className="flex items-center gap-2 justify-stretch md:justify-end order-3">
-            <button
-              className="af-btn w-full md:w-auto text-center px-4 py-2 text-sm md:text-base"
-              onClick={(e) => {
-                const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect()
-                setPickerAnchor({ top: rect.top + window.scrollY, left: rect.left + window.scrollX, height: rect.height })
-                setPickerMonth(new Date(viewMonthDate.getFullYear(), viewMonthDate.getMonth(), 1))
-                setDatePickerOpen(true)
-              }}
-            >Selecionar data</button>
-          </div>
-        </div>
-
-        {/* Linha única da semana: Dom–Sáb (7 dias, sem scroll em mobile) */}
-        <div className="">
-          <div className="rounded-2xl ring-1 ring-[var(--af-border)] overflow-hidden bg-white">
-            <div className="grid grid-cols-7">
-              {weekDays.map((d, idx) => {
-                const y = d.getFullYear(); const m = String(d.getMonth() + 1).padStart(2, '0'); const dd = String(d.getDate()).padStart(2, '0')
-                const key = `${y}-${m}-${dd}`
-                // Contabiliza todas as reservas do dia para refletir a lista
-                const totalDoDia = (reservasByDate.get(key) ?? []).length
-                const isSelected = key === selectedDay
-                return (
-                  <button
-                    key={idx}
-                    onClick={() => setSelectedDay(key)}
-                    className={`relative p-2 sm:p-3 text-center transition
-                      ${isSelected ? 'bg-white' : 'bg-white hover:bg-gray-50'}
-                      ${idx !== 0 ? 'border-l border-[var(--af-border)]' : ''}
-                      ${flashDay === key ? 'af-glow' : ''}
-                    `}
-                  >
-                    <div className={`absolute inset-x-0 top-0 h-1 ${isSelected ? 'bg-gradient-to-r from-primary-500 to-primary-400' : 'bg-transparent'}`} />
-                    <div className="text-[10px] sm:text-[12px] text-[var(--af-text-dim)]">{format(d, 'EEE', { locale: ptBR })}</div>
-                    <div className="mt-1 text-base sm:text-lg md:text-xl font-semibold text-[var(--af-text)]">{d.getDate()}</div>
-                    <div className="mt-1 text-[10px] sm:text-[12px] md:text-[13px] text-[var(--af-text-muted)]">{totalDoDia} reserva{totalDoDia === 1 ? '' : 's'}</div>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-      </div>
-      <div className="af-section af-card-elev shadow-sm overflow-hidden min-w-0">
-        <div className="mb-3 af-subtitle">Reservas do dia
-          <span className="ml-2 af-chip text-[var(--af-text-dim)]">{format(parseYYYYMMDD(selectedDay), 'dd/MM/yy', { locale: ptBR })}</span>
-        </div>
-        {/* Filtros da lista */}
-        <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-          <input
-            placeholder="Buscar por cliente"
-            className="af-field placeholder:text-[var(--af-text-muted)]"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
-          <select
-            className="af-field"
-            value={statusSel}
-            onChange={(e) => setStatusSel(e.target.value as any)}
-          >
-            <option className="af-card" value="todos">Todos status</option>
-            <option className="af-card" value="pendente">pendente</option>
-            <option className="af-card" value="confirmada">confirmada</option>
-            <option className="af-card" value="cancelada">cancelada</option>
-            <option className="af-card" value="finalizada">finalizada</option>
-            <option className="af-card" value="expirada">expirada</option>
-          </select>
-          <select
-            className="af-field"
-            value={pagamentoSel}
-            onChange={(e) => setPagamentoSel(e.target.value as any)}
-          >
-            <option className="af-card" value="todos">Todos pagamentos</option>
-            <option className="af-card" value="pago">Pago</option>
-            <option className="af-card" value="pendente">Pendente</option>
-          </select>
-        </div>
-        {isLoading && <div className="af-text-dim">Carregando…</div>}
-        {error && <div className="af-alert">Erro ao carregar reservas</div>}
-        {!isLoading && !error && (
-          <ul className="space-y-4">
-            {filtered.map((r, idx) => (
-              <li key={r.id}>
-                <div
-                  className={`relative af-list-card af-list-card-info cursor-pointer overflow-hidden ${expandedId === r.id ? 'z-50' : ''} ${
-                    (() => { const s = effectiveStatus(r); return s === 'finalizada' ? 'border-t-2 border-blue-300/70' : s === 'confirmada' ? 'border-t-2 border-blue-400/60' : s === 'expirada' ? 'border-t-2 border-white/30' : s === 'cancelada' ? 'border-t-2 border-red-400/60' : 'border-t-2 border-white/20' })()
-                  } ${selectionMode && selectedIds.has(String(r.id)) ? 'af-selected af-glow ring-2 ring-blue-400/50' : ''}`}
-                  onClick={() => {
-                    if (suppressNextTapIdRef.current === String(r.id)) {
-                      suppressNextTapIdRef.current = null
-                      return
-                    }
-                    if (selectionMode) {
-                      toggleSelectId(r.id, !selectedIds.has(String(r.id)))
-                    } else {
-                      // não abre menu ao clicar no card; menu só abre ao clicar no chip de status
-                    }
-                  }}
-                  onTouchStart={() => onCardTouchStart(r.id)}
-                  onTouchEnd={onCardTouchEnd}
-                  onTouchCancel={onCardTouchEnd}
-                >
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-5 sm:items-center">
-                    <div className="col-span-3 space-y-1.5 min-w-0">
-                      {selectionMode && (
-                        <input
-                          type="checkbox"
-                          className="hidden sm:inline-block h-4 w-4 mr-2 rounded border-white/30 bg-transparent align-middle"
-                          checked={selectedIds.has(String(r.id))}
-                          onChange={(e) => toggleSelectId(r.id, e.target.checked)}
-                        />
-                      )}
-                      <div className="flex items-center gap-3">
-                        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-blue-700 ring-1 ring-blue-200 text-[12px] font-semibold">{idx + 1}</span>
-                        <span className="truncate title">{clienteNome(r.cliente_id)}</span>
-                      </div>
-                      <div className="subtle">{fmtDataHora((r as any).data_reserva, (r as any).hora_reserva)}</div>
-                      <div className="text-[13px] text-[var(--af-text-dim)] flex flex-wrap gap-3">
-                        <span>{(r as any).n_pessoas ? `${(r as any).n_pessoas} pessoa(s)` : '—'}</span>
-                        {(r as any).observacao && <span className="truncate max-w-full">Obs: {(r as any).observacao}</span>}
-                      </div>
-                    </div>
-                    <div className="col-span-2 flex flex-wrap items-center justify-start gap-3 sm:justify-end">
-                      {/* Status efetivo: vira um chip clicável para abrir o menu */}
-                      <div className="relative" data-status-menu>
-                        {(() => {
-                          const s = effectiveStatus(r)
-                          const chipCls = s === 'finalizada'
-                            ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-200'
-                            : s === 'confirmada'
-                              ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-200'
-                              : s === 'expirada'
-                                ? 'bg-gray-50 text-gray-600 ring-1 ring-gray-200'
-                                : s === 'cancelada'
-                                  ? 'bg-red-50 text-red-700 ring-1 ring-red-200'
-                                  : 'bg-gray-50 text-gray-700 ring-1 ring-gray-200'
-                          return (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                const next = expandedId === r.id ? null : r.id
-                                setExpandedId(next)
-                                if (next) {
-                                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-                                  // alinhado à direita do chip
-                                  setStatusMenuPos({ id: r.id, top: rect.bottom + window.scrollY + 8, left: rect.right + window.scrollX - 176 })
-                                } else {
-                                  setStatusMenuPos(null)
-                                }
-                              }}
-                              className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[12px] ${chipCls}`}
-                            >
-                              <span className="inline-block h-2 w-2 rounded-full bg-current/80" />
-                              {s}
-                            </button>
-                          )
-                        })()}
-                        {expandedId === r.id && statusMenuPos?.id === r.id && createPortal(
-                          <div className="fixed z-[9999] w-44 rounded-md af-card-elev p-1 shadow-2xl" data-status-menu
-                               style={{ top: statusMenuPos?.top ?? 0, left: statusMenuPos?.left ?? 0 }}>
-                            <button onClick={(e) => { e.stopPropagation(); setStatus(r.id, 'confirmada'); setExpandedId(null); setStatusMenuPos(null) }} className="w-full text-left af-btn-ghost px-2 py-1.5 text-sm">Confirmar</button>
-                            <button onClick={(e) => { e.stopPropagation(); updateReserva.mutate({ id: r.id, payload: { status: 'finalizada' } as any }); setExpandedId(null); setStatusMenuPos(null) }} className="w-full text-left af-btn-ghost px-2 py-1.5 text-sm">Finalizar</button>
-                            <button onClick={(e) => { e.stopPropagation(); updateReserva.mutate({ id: r.id, payload: { status: 'expirada' } as any }); setExpandedId(null); setStatusMenuPos(null) }} className="w-full text-left af-btn-ghost px-2 py-1.5 text-sm">Expirar</button>
-                            <button onClick={(e) => { e.stopPropagation(); setStatus(r.id, 'cancelada'); setExpandedId(null); setStatusMenuPos(null) }} className="w-full text-left af-btn-ghost px-2 py-1.5 text-sm">Cancelar</button>
-                          </div>, document.body)
-                        }
-                      </div>
-                      {/* Indicador de pagamento (bolinha verde quando pago) */}
-                      <span className="inline-flex items-center gap-1" title={r.status_pagamento ? 'Pago' : 'Pagamento pendente'}>
-                        <span className={`inline-block h-2.5 w-2.5 rounded-full ${r.status_pagamento ? 'bg-green-400' : 'bg-white/30'}`} />
-                      </span>
-                      {/* Editar / Excluir sempre visíveis */}
-                      <button onClick={(e) => { e.stopPropagation(); openEdit(r) }} className="af-btn-ghost rounded-full px-3 py-1.5 text-sm">Editar</button>
-                      <button onClick={(e) => { e.stopPropagation(); if (confirm('Tem certeza que deseja excluir esta reserva?')) deleteReserva.mutate(r.id) }} className="af-btn-ghost rounded-full px-3 py-1.5 text-sm">Excluir</button>
-                    </div>
-                  </div>
-                </div>
-              </li>
-            ))}
-            {reservas?.length === 0 && <li className="py-6 text-sm text-[var(--af-text-dim)]">Sem reservas ainda.</li>}
-          </ul>
-        )}
-      </div>
-
-      {open && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-white/70 p-4">
-          <div className="w-full max-w-md rounded-xl af-card-elev p-5 shadow-xl overflow-hidden min-w-0">
-            <div className="mb-3 text-lg font-semibold text-[var(--af-text)]">{editingId ? 'Editar reserva' : 'Nova reserva'}</div>
-            <form onSubmit={onSubmit} className="space-y-3">
-              <div>
-                <label className="mb-1 block af-label">Cliente</label>
-                <select
-                  className="af-field"
-                  value={form.cliente_id}
-                  onChange={(e) => setForm((f) => ({ ...f, cliente_id: e.target.value }))}
-                  required
-                >
-                  <option value="" className="af-card">Selecione…</option>
-                  {(clientes ?? []).map((c) => (
-                    <option key={c.id} value={c.id} className="af-card">{c.nome}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1 block af-label">Data</label>
-                  <input
-                    type="date"
-                    className="af-field"
-                    value={form.data_reserva}
-                    onChange={(e) => setForm((f) => ({ ...f, data_reserva: e.target.value }))}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block af-label">Hora</label>
-                  <input
-                    type="time"
-                    className="af-field"
-                    value={form.hora_reserva}
-                    onChange={(e) => setForm((f) => ({ ...f, hora_reserva: e.target.value }))}
-                    required
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1 block af-label">Nº de pessoas</label>
-                  <input
-                    type="number"
-                    min={1}
-                    className="af-field"
-                    value={form.n_pessoas}
-                    onChange={(e) => setForm((f) => ({ ...f, n_pessoas: Number(e.target.value || 0) }))}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block af-label">Observação</label>
-                  <input
-                    type="text"
-                    placeholder="Ex: mesa perto da janela"
-                    className="af-field"
-                    value={form.observacao}
-                    onChange={(e) => setForm((f) => ({ ...f, observacao: e.target.value }))}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1 block af-label">Status</label>
-                  <select
-                    className="af-field"
-                    value={form.status}
-                    onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
-                  >
-                    <option value="pendente" className="af-card">pendente</option>
-                    <option value="confirmada" className="af-card">confirmada</option>
-                    <option value="cancelada" className="af-card">cancelada</option>
-                    <option value="finalizada" className="af-card">finalizada</option>
-                    <option value="expirada" className="af-card">expirada</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-1 block af-label">Pagamento</label>
-                  <div className="flex items-center gap-2">
-                    <input id="pago" type="checkbox" className="h-4 w-4" checked={form.status_pagamento} onChange={(e) => setForm((f) => ({ ...f, status_pagamento: e.target.checked }))} />
-                    <label htmlFor="pago" className="af-label">Pago</label>
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button type="button" onClick={() => setOpen(false)} className="af-btn text-sm">Cancelar</button>
-                <div className="mr-auto min-h-[1rem] af-help">{submitError ? submitError : ''}</div>
-                <button
-                  type="submit"
-                  disabled={createReserva.isPending || updateReserva.isPending}
-                  className="af-btn-primary disabled:opacity-60"
-                >
-                  {createReserva.isPending || updateReserva.isPending
-                    ? (editingId ? 'Salvando…' : 'Criando…')
-                    : (editingId ? 'Salvar' : 'Criar')}
+          <div className="flex items-center gap-2">
+            {selectionMode && (
+              <>
+                <button onClick={selectAllReservas} className="af-btn-secondary flex items-center gap-2">
+                  <CheckSquare className="h-4 w-4" />
+                  Selecionar Todos
                 </button>
-              </div>
-            </form>
+                <button onClick={handleBulkDelete} disabled={selectedReservas.size === 0} className="af-btn-danger flex items-center gap-2">
+                  <Trash2 className="h-4 w-4" />
+                  Excluir ({selectedReservas.size})
+                </button>
+                <button onClick={clearSelection} className="af-btn-secondary">
+                  Cancelar
+                </button>
+              </>
+            )}
+            {!selectionMode && (
+              <>
+                <button onClick={() => setSelectionMode(true)} className="af-btn-secondary flex items-center gap-2">
+                  <Square className="h-4 w-4" />
+                  Selecionar
+                </button>
+                <button onClick={openCreate} className="af-btn-primary flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Nova Reserva
+                </button>
+              </>
+            )}
           </div>
         </div>
-      )}
+
+        {/* Filters */}
+        <Card
+          title={(
+            <div className="flex items-center gap-2">
+              <Filter className="h-5 w-5 text-[#8C54FF]" />
+              <span>Filtros</span>
+            </div>
+          )}
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            <input
+              type="text"
+              placeholder="Pesquisar por nome..."
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              className="af-input"
+            />
+            <select value={statusSel} onChange={(e) => setStatusSel(e.target.value as any)} className="af-input">
+              <option value="todos">Todos os status</option>
+              <option value="pendente">Pendente</option>
+              <option value="confirmada">Confirmada</option>
+              <option value="cancelada">Cancelada</option>
+              <option value="finalizada">Finalizada</option>
+              <option value="expirada">Expirada</option>
+            </select>
+            <select value={pagamentoSel} onChange={(e) => setPagamentoSel(e.target.value as any)} className="af-input">
+              <option value="todos">Pagamento</option>
+              <option value="pago">Pago</option>
+              <option value="pendente">Pendente</option>
+            </select>
+          </div>
+        </Card>
+
+        {/* Weekly Calendar */}
+        <Card
+          title={(
+            <div className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-[#2ED47A]" />
+              <span>Calendário Semanal</span>
+            </div>
+          )}
+        >
+          <WeeklyCalendar
+            selectedDay={selectedDay}
+            onSelectDay={(d) => setSelectedDay(d)}
+            onPrevWeek={goPrevWeek}
+            onNextWeek={goNextWeek}
+            onToday={goToday}
+            countsByDay={confirmedCountByDay}
+          />
+        </Card>
+
+        {/* Reservation List */}
+        <Card
+          title={(
+            <div className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-[#FFB648]" />
+              <span>Lista de Reservas</span>
+            </div>
+          )}
+        >
+          <div className="space-y-3">
+            {isLoading && (
+              <div className="text-center py-8 text-gray-500">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#5D5FEF] mx-auto"></div>
+                <p className="mt-2">Carregando reservas...</p>
+              </div>
+            )}
+            {error && (
+              <div className="text-center py-8 text-red-500">
+                <p>Erro ao carregar reservas.</p>
+              </div>
+            )}
+            {!isLoading && !error && filtered.length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                <Calendar className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                <p>Nenhuma reserva encontrada.</p>
+              </div>
+            )}
+            {!isLoading &&
+              !error &&
+              filtered.map((r: Reserva) => {
+                const s = statusColor(effectiveStatus(r));
+                return (
+                  <div
+                    key={r.id}
+                    className={`rounded-xl p-3 sm:p-4 border-l-4 ${s.border} hover:shadow-md transition-shadow ${
+                      selectionMode ? 'cursor-pointer' : ''
+                    } ${
+                      selectedReservas.has(r.id) ? 'ring-2 ring-purple-500 bg-purple-50' : ''
+                    }`}
+                    style={!selectedReservas.has(r.id) ? { backgroundColor: {
+                      confirmada: '#f0fff4',
+                      pendente: '#fffbf0', 
+                      cancelada: '#fff5f5',
+                      finalizada: '#f0f7ff',
+                      expirada: '#f8f9fa'
+                    }[effectiveStatus(r)] } : {}}
+                    onClick={() => selectionMode && toggleSelectReserva(r.id)}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                        {selectionMode ? (
+                          <div className="flex items-center justify-center w-5 h-5 flex-shrink-0">
+                            {selectedReservas.has(r.id) ? (
+                              <CheckSquare className="h-5 w-5 text-purple-600" />
+                            ) : (
+                              <Square className="h-5 w-5 text-gray-400" />
+                            )}
+                          </div>
+                        ) : (
+                          <div className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full ${s.dot} flex-shrink-0`}></div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 mb-2">
+                            <h3 className="font-semibold text-gray-900 text-sm sm:text-base truncate">{clienteNome(r.cliente_id)}</h3>
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${s.bg} ${s.text} self-start`}>
+                              {effectiveStatus(r)}
+                            </span>
+                          </div>
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600">
+                            <div className="flex items-center gap-1">
+                              <Users className="h-3 w-3 sm:h-4 sm:w-4" />
+                              <span>{r.n_pessoas} pessoas</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
+                              <span className="truncate">{r.data_reserva ? format(parseISO(r.data_reserva), 'dd/MM/yyyy') : ''} às {r.hora_reserva}</span>
+                            </div>
+                            {!r.status_pagamento && (
+                              <div className="flex items-center gap-1 text-red-600">
+                                <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-red-500 rounded-full"></div>
+                                <span className="text-xs">Pagamento Pendente</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      {!selectionMode && (
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <button onClick={() => openEdit(r)} className="af-btn-secondary flex items-center gap-1 text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2">
+                            <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
+                            <span className="hidden sm:inline">Editar</span>
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSingleDelete(r.id);
+                            }}
+                            className="af-btn-danger flex items-center gap-1 text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2"
+                          >
+                            <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                            <span className="hidden sm:inline">Excluir</span>
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              const rect = (e.target as HTMLElement).getBoundingClientRect();
+                              setStatusMenuPos({ reserva: r, top: rect.bottom, left: rect.left, width: rect.width });
+                            }}
+                            className="af-btn-secondary flex items-center gap-1 text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2"
+                          >
+                            <MoreVertical className="h-3 w-3 sm:h-4 sm:w-4" />
+                            <span className="hidden sm:inline">Status</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </Card>
+      </div>
     </div>
-  )
+
+    {statusMenuPos &&
+      createPortal(
+        <div
+          data-status-menu-container
+          className="absolute z-50 bg-white rounded-md shadow-lg border border-gray-200"
+          style={{ top: statusMenuPos.top, left: statusMenuPos.left, minWidth: statusMenuPos.width }}
+        >
+          <button
+            onClick={() => {
+              setStatus(statusMenuPos.reserva.id, 'pendente');
+              setStatusMenuPos(null);
+            }}
+            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+          >
+            Pendente
+          </button>
+          <button
+            onClick={() => {
+              setStatus(statusMenuPos.reserva.id, 'confirmada');
+              setStatusMenuPos(null);
+            }}
+            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+          >
+            Confirmada
+          </button>
+          <button
+            onClick={() => {
+              setStatus(statusMenuPos.reserva.id, 'cancelada');
+              setStatusMenuPos(null);
+            }}
+            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+          >
+            Cancelada
+          </button>
+        </div>,
+        document.body
+      )}
+
+    {/* Modal Portal */}
+    {editingId !== null &&
+      createPortal(
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40"
+          data-overlay
+          onClick={handleOverlayClick}
+        >
+          <div className="af-card w-full max-w-lg rounded-xl shadow-xl m-4">
+            <form onSubmit={onSubmit} className="p-6 space-y-4">
+              <h2 className="af-card-title text-lg">{editingId === 'new' ? 'Nova Reserva' : 'Editar Reserva'}</h2>
+
+              {submitError && <div className="p-3 bg-red-100 text-red-700 rounded-md text-sm">{submitError}</div>}
+              
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="af-label">Cliente</label>
+                    <select
+                      value={form.cliente_id}
+                      onChange={(e) => setForm({ ...form, cliente_id: e.target.value })}
+                      className="af-input"
+                      required
+                    >
+                      <option value="">Selecione um cliente</option>
+                      {(clientes ?? []).map((c: any) => (
+                        <option key={c.id} value={c.id}>
+                          {c.nome}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="af-label">Nº de Pessoas</label>
+                    <input
+                      type="number"
+                      value={form.n_pessoas}
+                      onChange={(e) => setForm({ ...form, n_pessoas: parseInt(e.target.value, 10) })}
+                      className="af-input"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="af-label">Data</label>
+                    <input
+                      type="date"
+                      value={form.data_reserva}
+                      onChange={(e) => setForm({ ...form, data_reserva: e.target.value })}
+                      className="af-input"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="af-label">Hora</label>
+                    <input
+                      type="time"
+                      value={form.hora_reserva}
+                      onChange={(e) => setForm({ ...form, hora_reserva: e.target.value })}
+                      className="af-input"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="af-label">Observação</label>
+                  <textarea
+                    value={form.observacao}
+                    onChange={(e) => setForm({ ...form, observacao: e.target.value })}
+                    className="af-input"
+                    rows={3}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="af-label">Status</label>
+                    <select
+                      value={form.status}
+                      onChange={(e) => setForm({ ...form, status: e.target.value as TStatus })}
+                      className="af-input"
+                    >
+                      <option value="pendente">Pendente</option>
+                      <option value="confirmada">Confirmada</option>
+                      <option value="cancelada">Cancelada</option>
+                      <option value="finalizada">Finalizada</option>
+                    </select>
+                  </div>
+                  <div className="pt-6">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={form.status_pagamento}
+                        onChange={(e) => setForm({ ...form, status_pagamento: e.target.checked })}
+                        className="af-checkbox"
+                      />
+                      <span>Pago</span>
+                    </label>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-3 pt-4">
+                  <button type="button" onClick={close} className="af-btn-secondary">
+                    Cancelar
+                  </button>
+                  <button type="submit" className="af-btn-primary">
+                    Salvar
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
+    
+    {/* Delete Confirmation Modal */}
+    {showDeleteConfirm && createPortal(
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-xl shadow-xl p-6 max-w-md mx-4">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            Confirmar Exclusão
+          </h3>
+          <p className="text-gray-600 mb-6">
+            {deleteTarget === 'single'
+              ? 'Tem certeza que deseja excluir esta reserva?'
+              : `Tem certeza que deseja excluir ${selectedReservas.size} reserva(s) selecionada(s)?`
+            }
+          </p>
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={cancelDelete}
+              className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={confirmDelete}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Excluir
+            </button>
+          </div>
+        </div>
+      </div>,
+      document.body
+    )}
+    </>
+  );
 }

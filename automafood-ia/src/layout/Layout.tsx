@@ -8,10 +8,8 @@ export default function Layout() {
   const [open, setOpen] = useState(false)
 
   return (
-    <div className="relative min-h-screen">
-      {/* App background: clean light with subtle radial accents */}
-      <div className="pointer-events-none absolute inset-0 -z-10" style={{ background: 'white' }} />
-      <div className="pointer-events-none absolute inset-0 -z-10" style={{ backgroundImage: 'var(--af-bg-grad-1), var(--af-bg-grad-2)' }} />
+    <div className="relative min-h-screen bg-white">
+      {/* Removed radial accent layers for neutral white/gray background */}
       {/* Mobile top bar */}
       <header className="af-topbar lg:hidden">
         <div className="flex items-center justify-between gap-2 px-4 py-3 h-16">
@@ -41,8 +39,11 @@ export default function Layout() {
         {/* Content */}
         <div className="flex min-h-[calc(100vh-0px)] flex-col">
           <HeaderBar />
-          <main className="flex-1 p-4 lg:p-6">
-            <Outlet />
+          {/* Solid white content with global container for consistent spacing */}
+          <main className="flex-1 py-5 lg:py-7 bg-white">
+            <div className="af-container">
+              <Outlet />
+            </div>
           </main>
         </div>
       </div>
