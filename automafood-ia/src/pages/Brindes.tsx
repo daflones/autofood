@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { Card } from '../components/Card'
 import { useQrcodes, useClientes, useCreateQrcode, useUpdateQrcode, useUpdateQrcodeExact, useDeleteQrcodeExact } from '../hooks/useRestaurantData'
 import { format } from 'date-fns'
-import { CheckCircle, Clock, XCircle, AlertTriangle, Search, Plus, Trash2, Gift } from 'lucide-react'
+import { CheckCircle, Clock, XCircle, AlertTriangle, Search, Plus, Trash2, Gift, Filter } from 'lucide-react'
 
 export default function Brindes() {
   const { data: qrcodes, isLoading, error } = useQrcodes()

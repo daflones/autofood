@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { supabase } from '../../lib/supabaseClient'
 import { useLocation, useNavigate, Link } from 'react-router-dom'
+import SalesForm from '../../components/SalesForm'
 
 const schema = z.object({
   email: z.string().email('Email inválido'),
@@ -14,6 +16,7 @@ type FormData = z.infer<typeof schema>
 export default function Login() {
   const navigate = useNavigate()
   const location = useLocation() as { state?: { from?: Location } }
+  const [showSalesForm, setShowSalesForm] = useState(false)
   const {
     register,
     handleSubmit,
@@ -79,12 +82,18 @@ export default function Login() {
         <div className="mt-6 pt-6 border-t border-gray-100 text-center">
           <p className="text-sm text-gray-600">
             Precisa de uma conta?{' '}
-            <a href="https://wa.me/5511999999999?text=Olá,%20gostaria%20de%20saber%20mais%20sobre%20o%20AutoFood" target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:text-purple-700 font-medium">
+            <button 
+              onClick={() => setShowSalesForm(true)}
+              className="text-purple-600 hover:text-purple-700 font-medium underline"
+            >
               Fale com um vendedor
-            </a>
+            </button>
           </p>
         </div>
       </div>
+      
+      {/* Sales Form Modal */}
+      <SalesForm isOpen={showSalesForm} onClose={() => setShowSalesForm(false)} />
     </div>
   )
 }
