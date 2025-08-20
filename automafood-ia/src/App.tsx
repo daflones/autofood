@@ -7,7 +7,7 @@ import Configuracoes from './pages/Configuracoes'
 import CardapioDigital from './pages/CardapioDigital'
 import GerenciarCardapio from './pages/GerenciarCardapio'
 import ConfiguracaoRestaurante from './pages/ConfiguracaoRestaurante';
-import Chat from './pages/Chat';
+import Site from './pages/Site';
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
 import ForgotPassword from './pages/auth/ForgotPassword'
@@ -25,6 +25,7 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/site" element={<Site />} />
         <Route
           path="/"
           element={
@@ -40,7 +41,6 @@ function App() {
           <Route path="cardapio-digital" element={<CardapioDigital />} />
           <Route path="gerenciar-cardapio" element={<GerenciarCardapio />} />
           <Route path="/configuracao-restaurante" element={<ConfiguracaoRestaurante />} />
-          <Route path="/chat" element={<Chat />} />
           <Route path="configuracoes" element={<Configuracoes />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { X, Home, Calendar, Users, Gift, Settings, ChefHat, Menu, LogOut, MessageCircle } from 'lucide-react';
+import { X, Home, Calendar, Users, Gift, Settings, LogOut } from 'lucide-react';
 import { supabaseMain } from '../lib/supabase'
 
 const links = [
@@ -7,10 +7,9 @@ const links = [
   { to: '/reservas', label: 'Reservas', icon: Calendar },
   { to: '/clientes', label: 'Clientes', icon: Users },
   { to: '/brindes', label: 'Brindes', icon: Gift },
-  { to: '/chat', label: 'Chat', icon: MessageCircle },
-  { to: '/cardapio-digital', label: 'Cardápio Digital', icon: ChefHat },
-  { to: '/gerenciar-cardapio', label: 'Gerenciar Cardápio', icon: Menu },
-  { to: '/configuracao-restaurante', label: 'Config. Restaurante', icon: Settings },
+  // { to: '/cardapio-digital', label: 'Cardápio Digital', icon: ChefHat },
+  // { to: '/gerenciar-cardapio', label: 'Gerenciar Cardápio', icon: Menu },
+  // { to: '/configuracao-restaurante', label: 'Config. Restaurante', icon: Settings },
   { to: '/configuracoes', label: 'Configurações', icon: Settings },
 ]
 

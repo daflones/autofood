@@ -107,33 +107,6 @@ export interface RestaurantConfig {
   updated_at: string
 }
 
-// WhatsApp Chat types
-export interface ChatContact {
-  id: number
-  remote_jid: string
-  phone: string
-  name: string
-  push_name?: string
-  profile_picture?: string
-  is_group: boolean
-  created_at: string
-  updated_at: string
-}
-
-export interface ChatMessage {
-  id: number
-  contact_id: number
-  message_id: string
-  remote_jid: string
-  message_text: string
-  message_type: string
-  from_me: boolean
-  timestamp: string
-  status?: string
-  instance_name: string
-  created_at: string
-  contact?: ChatContact
-}
 
 export interface Order {
   id: number
