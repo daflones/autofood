@@ -1,18 +1,22 @@
 import { NavLink } from 'react-router-dom'
-import { X, LayoutDashboard, CalendarDays, Users2, Gift, Settings, LogOut } from 'lucide-react'
-import { supabase } from '../lib/supabaseClient'
+import { X, Home, Calendar, Users, Gift, Settings, ChefHat, Menu, LogOut, MessageCircle } from 'lucide-react';
+import { supabaseMain } from '../lib/supabase'
 
 const links = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/reservas', label: 'Reservas', icon: CalendarDays },
-  { to: '/clientes', label: 'Clientes', icon: Users2 },
+  { to: '/', label: 'Dashboard', icon: Home },
+  { to: '/reservas', label: 'Reservas', icon: Calendar },
+  { to: '/clientes', label: 'Clientes', icon: Users },
   { to: '/brindes', label: 'Brindes', icon: Gift },
+  { to: '/chat', label: 'Chat', icon: MessageCircle },
+  { to: '/cardapio-digital', label: 'Cardápio Digital', icon: ChefHat },
+  { to: '/gerenciar-cardapio', label: 'Gerenciar Cardápio', icon: Menu },
+  { to: '/configuracao-restaurante', label: 'Config. Restaurante', icon: Settings },
   { to: '/configuracoes', label: 'Configurações', icon: Settings },
 ]
 
 export default function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const handleLogout = async () => {
-    await supabase.auth.signOut()
+    await supabaseMain.auth.signOut()
     window.location.href = '/login'
   }
   return (
