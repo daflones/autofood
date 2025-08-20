@@ -10,8 +10,9 @@ commands = [
 ]
 
 [start]
-cmd = "npm start"
+cmd = "serve -s dist -p $PORT"
 
 [variables]
 # Prevent npm from pruning devDependencies in production builds
 NPM_CONFIG_PRODUCTION = "false"
+PORT = "80"

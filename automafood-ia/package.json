@@ -11,7 +11,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "start": "serve -s dist -l ${PORT}"
+    "start": "serve -s dist -p $PORT"
   },
   "dependencies": {
     "@fullcalendar/core": "^6.1.19",
