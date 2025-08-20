@@ -1,45 +1,19 @@
 import { createClient } from '@supabase/supabase-js'
 
-// Digital Menu Database Configuration
-const supabaseMenuUrl = import.meta.env.VITE_SUPABASE_MENU_URL
-const supabaseMenuAnonKey = import.meta.env.VITE_SUPABASE_MENU_ANON_KEY
+// Main Database Configuration
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-// Main Database Configuration (for reservations, clients, etc.)
-const supabaseMainUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseMainAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-
-if (!supabaseMenuUrl || !supabaseMenuAnonKey) {
-  throw new Error('Missing Supabase Menu database environment variables')
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase environment variables')
 }
 
-if (!supabaseMainUrl || !supabaseMainAnonKey) {
-  throw new Error('Missing Supabase Main database environment variables')
-}
-
-// Create single instances with completely disabled auth to prevent warnings
-export const supabase = createClient(supabaseMenuUrl, supabaseMenuAnonKey, {
+// Create single Supabase client instance
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    persistSession: false,
-    autoRefreshToken: false,
-    detectSessionInUrl: false,
-    storage: {
-      getItem: () => null,
-      setItem: () => {},
-      removeItem: () => {}
-    }
-  }
-});
-
-export const supabaseMain = createClient(supabaseMainUrl, supabaseMainAnonKey, {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false,
-    detectSessionInUrl: false,
-    storage: {
-      getItem: () => null,
-      setItem: () => {},
-      removeItem: () => {}
-    }
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true
   }
 });
 
@@ -155,7 +129,7 @@ export const uploadProductImage = async (file: File, productId: number): Promise
     }
 
     const { data: { publicUrl } } = supabase.storage
-      .from('product-images')
+      .from(bucketName)
       .getPublicUrl(data.path)
 
     return publicUrl

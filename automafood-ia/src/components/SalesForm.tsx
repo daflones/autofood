@@ -85,7 +85,7 @@ export default function SalesForm({ isOpen, onClose }: SalesFormProps) {
 *Incluso:* Setup completo + Treinamento + Suporte vitalício`
 
     const encodedMessage = encodeURIComponent(message)
-    window.open(`https://wa.me/5511999999999?text=${encodedMessage}`, '_blank')
+    window.open(`https://wa.me/5521974930079?text=${encodedMessage}`, '_blank')
     onClose()
   }
 

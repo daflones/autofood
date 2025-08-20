@@ -1,9 +1,9 @@
 import { NavLink } from 'react-router-dom'
 import { X, Home, Calendar, Users, Gift, Settings, LogOut } from 'lucide-react';
-import { supabaseMain } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 
 const links = [
-  { to: '/', label: 'Dashboard', icon: Home },
+  { to: '/dashboard', label: 'Dashboard', icon: Home },
   { to: '/reservas', label: 'Reservas', icon: Calendar },
   { to: '/clientes', label: 'Clientes', icon: Users },
   { to: '/brindes', label: 'Brindes', icon: Gift },
@@ -15,7 +15,7 @@ const links = [
 
 export default function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const handleLogout = async () => {
-    await supabaseMain.auth.signOut()
+    await supabase.auth.signOut()
     window.location.href = '/login'
   }
   return (

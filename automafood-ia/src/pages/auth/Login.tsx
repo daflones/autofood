@@ -89,6 +89,14 @@ export default function Login() {
               Fale com um vendedor
             </button>
           </p>
+          <div className="mt-4">
+            <Link 
+              to="/site"
+              className="inline-flex items-center justify-center w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-medium py-3 px-4 rounded-xl transition-all"
+            >
+              🌐 Acesse nossa página de vendas
+            </Link>
+          </div>
         </div>
       </div>
       
